@@ -22,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   static const MethodChannel _assistantChannel = MethodChannel('xiaozhi/assistant');
   bool _assistantLaunchInProgress = false;
+  bool _assistantLaunchHandling = false;
   bool _creatingConversation = false;
 
   @override
@@ -32,7 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final pending = await _assistantChannel.invokeMethod<bool>(
           'consumeAssistantLaunch',
         );
-        if (pending == true) _openAssistantVoice();
+        if (pending == true) _handleAssistantLaunch();
       }
       return null;
     });
@@ -42,13 +43,36 @@ class _HomeScreenState extends State<HomeScreen> {
         final pending = await _assistantChannel.invokeMethod<bool>(
           'consumeAssistantLaunch',
         );
-        if (pending == true) _openAssistantVoice();
+        if (pending == true) _handleAssistantLaunch();
       } on PlatformException catch (e) {
         debugPrint('Не удалось получить запрос голосового помощника: $e');
       } on MissingPluginException {
         // Канал доступен только в Android-сборке с системным помощником.
       }
     });
+  }
+
+  // Каждый системный вызов начинает новую голосовую сессию.
+  // Сначала убираем оставшийся поверх главного экрана чат, если приложение
+  // было свернуто и Android сохранил прежний экран в стеке навигации.
+  Future<void> _handleAssistantLaunch() async {
+    if (!mounted || _assistantLaunchHandling) return;
+    _assistantLaunchHandling = true;
+    try {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+
+      // Дожидаемся завершения предыдущего push и его finally-блока.
+      for (var attempt = 0; attempt < 40; attempt++) {
+        if (!mounted || !_assistantLaunchInProgress) break;
+        await Future.delayed(const Duration(milliseconds: 50));
+      }
+
+      // Даём старому ChatScreen завершить dispose и остановить аудио.
+      await Future.delayed(const Duration(milliseconds: 350));
+      if (mounted) await _openAssistantVoice();
+    } finally {
+      _assistantLaunchHandling = false;
+    }
   }
 
   Future<void> _openAssistantVoice() async {
