@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:math' as math;
 import 'dart:collection';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
@@ -26,6 +27,8 @@ class AudioUtil {
   static bool _isPlaying = false;
   static final StreamController<Uint8List> _audioStreamController =
       StreamController<Uint8List>.broadcast();
+  static final StreamController<bool> _speechActivityController =
+      StreamController<bool>.broadcast();
   static String? _tempFilePath;
   static Timer? _audioProcessingTimer;
 
@@ -45,6 +48,10 @@ class AudioUtil {
 
   /// 获取音频流
   static Stream<Uint8List> get audioStream => _audioStreamController.stream;
+
+  /// Поток признаков речи.
+  static Stream<bool> get speechActivityStream =>
+      _speechActivityController.stream;
 
   /// 初始化音频录制器
   static Future<void> initRecorder() async {
@@ -244,6 +251,7 @@ class AudioUtil {
         stream.listen(
           (data) async {
             if (data.isNotEmpty && data.length % 2 == 0) {
+              _publishSpeechActivity(data);
               final opusData = await encodeToOpus(data);
               if (opusData != null) {
                 _audioStreamController.add(opusData);
@@ -289,6 +297,23 @@ class AudioUtil {
       _isRecording = false;
       return null;
     }
+  }
+
+  /// Определяет наличие речи по уровню PCM-сигнала.
+  static void _publishSpeechActivity(Uint8List pcmData) {
+    final sampleCount = pcmData.length ~/ 2;
+    if (sampleCount == 0) return;
+    var sumSquares = 0.0;
+    var peak = 0;
+    for (var i = 0; i + 1 < pcmData.length; i += 2) {
+      var sample = pcmData[i] | (pcmData[i + 1] << 8);
+      if (sample >= 0x8000) sample -= 0x10000;
+      final magnitude = sample.abs();
+      if (magnitude > peak) peak = magnitude;
+      sumSquares += sample * sample;
+    }
+    final rms = math.sqrt(sumSquares / sampleCount);
+    _speechActivityController.add(rms >= 700 || peak >= 2200);
   }
 
   /// 将PCM数据编码为Opus格式

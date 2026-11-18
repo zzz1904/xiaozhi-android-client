@@ -63,6 +63,8 @@ class XiaozhiService {
   bool _assistantAutoListenAfterTts = false;
   bool _assistantPausedForTts = false;
   Future<void> _assistantAudioTransition = Future<void>.value();
+  Timer? _assistantSilenceTimer;
+  StreamSubscription<bool>? _assistantActivitySubscription;
 
   /// 工厂构造函数，实现单例模式
   factory XiaozhiService({
@@ -130,7 +132,25 @@ class XiaozhiService {
   /// Включает автоматическое возобновление микрофона после ответа XiaoZhi.
   void setAssistantAutoListenAfterTts(bool enabled) {
     _assistantAutoListenAfterTts = enabled;
-    if (!enabled) _assistantPausedForTts = false;
+    if (!enabled) {
+      _assistantPausedForTts = false;
+      _assistantSilenceTimer?.cancel();
+      _assistantSilenceTimer = null;
+      _assistantActivitySubscription?.cancel();
+      _assistantActivitySubscription = null;
+    }
+  }
+
+  void _resetAssistantSilenceTimer() {
+    if (!_assistantAutoListenAfterTts || !_isVoiceCallActive || _assistantPausedForTts) return;
+    _assistantSilenceTimer?.cancel();
+    _assistantSilenceTimer = Timer(const Duration(seconds: 10), () async {
+      if (!_assistantAutoListenAfterTts || !_isVoiceCallActive || _assistantPausedForTts) return;
+      print('$TAG: 10 секунд тишины — отключаем микрофон');
+      _assistantAutoListenAfterTts = false;
+      await stopListeningCall();
+      _dispatchEvent(XiaozhiServiceEvent(XiaozhiServiceEventType.voiceCallEnd, 'silence_timeout'));
+    });
   }
 
   /// Переключает микрофон вслед за состояниями TTS сервера.
@@ -141,6 +161,10 @@ class XiaozhiService {
       if (state == 'start') {
         if (_assistantPausedForTts) return;
         _assistantPausedForTts = true;
+        _assistantSilenceTimer?.cancel();
+        _assistantSilenceTimer = null;
+        await _assistantActivitySubscription?.cancel();
+        _assistantActivitySubscription = null;
         await _audioStreamSubscription?.cancel();
         _audioStreamSubscription = null;
         await AudioUtil.stopRecording();
@@ -522,6 +546,13 @@ class XiaozhiService {
         // 发送音频数据
         _webSocketManager?.sendBinaryMessage(opusData);
       });
+      if (_assistantAutoListenAfterTts) {
+        await _assistantActivitySubscription?.cancel();
+        _assistantActivitySubscription = AudioUtil.speechActivityStream.listen((active) {
+          if (active) _resetAssistantSilenceTimer();
+        });
+        _resetAssistantSilenceTimer();
+      }
 
       // 发送开始监听命令
       final message = {
@@ -541,6 +572,10 @@ class XiaozhiService {
   /// 停止听说（语音通话模式）
   Future<void> stopListeningCall() async {
     try {
+      _assistantSilenceTimer?.cancel();
+      _assistantSilenceTimer = null;
+      await _assistantActivitySubscription?.cancel();
+      _assistantActivitySubscription = null;
       // 取消音频流订阅
       await _audioStreamSubscription?.cancel();
       _audioStreamSubscription = null;

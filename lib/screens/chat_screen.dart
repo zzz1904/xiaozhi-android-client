@@ -223,6 +223,17 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _restartAssistantListening() async {
+    if (_xiaozhiService == null || !mounted) return;
+    try {
+      _xiaozhiService!.setAssistantAutoListenAfterTts(true);
+      await _xiaozhiService!.startListeningCall();
+      if (mounted) setState(() => _handsFreeReady = true);
+    } catch (e) {
+      _showCustomSnackbar('Не удалось включить микрофон: $e');
+    }
+  }
+
   // 处理小智消息
   void _handleXiaozhiMessage(XiaozhiServiceEvent event) {
     if (!mounted) return;
@@ -261,6 +272,9 @@ class _ChatScreenState extends State<ChatScreen> {
           );
         });
       }
+    } else if (event.type == XiaozhiServiceEventType.voiceCallEnd &&
+        event.data == 'silence_timeout') {
+      setState(() => _handsFreeReady = false);
     } else if (event.type == XiaozhiServiceEventType.connected ||
         event.type == XiaozhiServiceEventType.disconnected) {
       // 当连接状态发生变化时，更新UI
@@ -755,13 +769,21 @@ class _ChatScreenState extends State<ChatScreen> {
             child: Text(
               _handsFreeReady
                   ? 'Слушаю вас. После ответа снова продолжу слушать.'
-                  : 'Подключение к XiaoZhi...',
+                  : (_xiaozhiService?.isConnected == true
+                      ? 'Микрофон выключен после 10 секунд тишины.'
+                      : 'Подключение к XiaoZhi...'),
               style: const TextStyle(
                 color: Color(0xFF374151),
                 fontSize: 14,
               ),
             ),
           ),
+          if (!_handsFreeReady && _xiaozhiService?.isConnected == true)
+            IconButton(
+              tooltip: 'Включить микрофон',
+              onPressed: _restartAssistantListening,
+              icon: const Icon(Icons.mic, color: Colors.green),
+            ),
           IconButton(
             tooltip: 'Завершить',
             onPressed: () => Navigator.of(context).pop(),
