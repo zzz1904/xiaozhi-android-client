@@ -33,6 +33,8 @@ class _XiaozhiPairingScreenState extends State<XiaozhiPairingScreen> {
     setState(() {
       _busy = true;
       _error = null;
+      _activationCode = null;
+      _activationMessage = null;
       _status = 'Подключаемся к серверу XiaoZhi...';
     });
 
@@ -48,11 +50,12 @@ class _XiaozhiPairingScreenState extends State<XiaozhiPairingScreen> {
           deviceId: deviceId,
           clientId: clientId,
         );
+        if (!mounted) return;
 
         final activation = configuration['activation'];
         if (activation is Map) {
-          final code = (activation['code'] ?? '').toString();
-          final challenge = (activation['challenge'] ?? '').toString();
+          final code = (activation['code'] ?? '').toString().trim();
+          final challenge = (activation['challenge'] ?? '').toString().trim();
           if (code.isEmpty || challenge.isEmpty) {
             throw const FormatException(
               'Сервер не прислал код или challenge для активации',
