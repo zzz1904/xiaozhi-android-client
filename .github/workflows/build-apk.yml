@@ -107,3 +107,5 @@ jobs:
 # The feature branch is included for release validation.
 
 # Rebuild after enabling the Android assistant role.
+
+# Rebuild after fixing the remaining light-theme system UI setting.
