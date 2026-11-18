@@ -503,7 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${conversation.title} 已删除'),
+            content: Text('Диалог удалён'),
             backgroundColor: Colors.grey.shade800,
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 3),
@@ -711,7 +711,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ).deleteConversation(conversation.id);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('${conversation.title} 已删除'),
+                            content: Text('Диалог удалён'),
                             backgroundColor: Colors.grey.shade800,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(

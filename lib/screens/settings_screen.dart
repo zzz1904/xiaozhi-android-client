@@ -158,11 +158,11 @@ class _SettingsScreenState extends State<SettingsScreen>
           splashFactory: NoSplash.splashFactory,
           labelStyle: const TextStyle(
             fontWeight: FontWeight.w600,
-            fontSize: 16,
+            fontSize: 14,
           ),
           unselectedLabelStyle: const TextStyle(
             fontWeight: FontWeight.w500,
-            fontSize: 16,
+            fontSize: 14,
           ),
           tabs: const [Tab(text: 'Общие'), Tab(text: 'Настройки Dify'), Tab(text: 'Сервис Xiaozhi')],
         ),
@@ -901,7 +901,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('已更新Dify配置'),
+                            content: const Text('Настройки Dify обновлены'),
                             backgroundColor: Colors.green.shade600,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -987,7 +987,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          '删除Dify配置',
+                          'Удалить конфигурацию Dify',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -2041,7 +2041,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          '删除小智服务',
+                          'Удалить сервис Xiaozhi',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
