@@ -44,6 +44,32 @@ jobs:
       - name: Get Flutter dependencies
         run: flutter pub get
 
+      - name: Patch legacy flutter_pcm_player namespace for this build
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          cache = Path.home() / ".pub-cache/hosted/pub.dev"
+          matches = list(cache.glob("flutter_pcm_player-*/android/build.gradle"))
+          if not matches:
+              raise SystemExit("flutter_pcm_player Android Gradle file not found")
+          gradle_file = matches[-1]
+          source = gradle_file.read_text()
+          if re.search(r"namespace\\s*=", source):
+              print("Namespace already defined; no patch needed.")
+              raise SystemExit(0)
+          manifest = gradle_file.parent / "src/main/AndroidManifest.xml"
+          xml = manifest.read_text() if manifest.exists() else ""
+          match = re.search(r'package=["\\']([^"\\']+)["\\']', xml)
+          namespace = match.group(1) if match else "com.example.flutter_pcm_player"
+          if not re.search(r"android\\s*\\{", source):
+              raise SystemExit("Could not locate android { block in plugin Gradle file")
+          source = re.sub(r"(android\\s*\\{)", r'\\1\\n    namespace "' + namespace + '"', source, count=1)
+          gradle_file.write_text(source)
+          print(f"Added temporary namespace {namespace} to {gradle_file}")
+          PY
+
       - name: Build release APK
         run: flutter build apk --release
 
