@@ -170,11 +170,14 @@ class XiaozhiService {
         await AudioUtil.stopRecording();
         print('$TAG: микрофон приостановлен на время ответа XiaoZhi');
       } else if (state == 'stop' && _assistantPausedForTts) {
-        _assistantPausedForTts = false;
-        await Future.delayed(const Duration(milliseconds: 250));
+        // Сначала дожидаемся воспроизведения последнего аудиофрагмента.
+        // Иначе микрофон может записать последние слова самого XiaoZhi.
+        await AudioUtil.waitForPlaybackComplete();
+        await Future.delayed(const Duration(milliseconds: 200));
         if (_assistantAutoListenAfterTts && _isVoiceCallActive) {
+          _assistantPausedForTts = false;
           await startListeningCall();
-          print('$TAG: микрофон снова слушает после ответа XiaoZhi');
+          print('$TAG: микрофон снова слушает после полного завершения ответа XiaoZhi');
         }
       }
     }).catchError((Object error) {
@@ -321,8 +324,6 @@ class XiaozhiService {
     try {
       // 创建一个Completer来等待响应
       final completer = Completer<String>();
-      bool hasResponse = false;
-
       print('$TAG: 开始发送文本消息: $message');
 
       // 添加消息监听器，监听所有可能的回复
@@ -336,7 +337,6 @@ class XiaozhiService {
 
           print('$TAG: 收到服务器响应: ${event.data}');
           if (!completer.isCompleted) {
-            hasResponse = true;
             completer.complete(event.data as String);
             removeListener(onceListener);
           }
@@ -355,10 +355,11 @@ class XiaozhiService {
       print('$TAG: 发送文本请求: $message');
       _webSocketManager!.sendTextRequest(message);
 
-      // 设置超时，15秒比10秒更宽松一些
-      final timeoutTimer = Timer(const Duration(seconds: 15), () {
+      // Ответ модели иногда задерживается из-за сети или нагрузки сервера.
+      // 45 секунд уменьшают число ложных ошибок при медленном ответе.
+      final timeoutTimer = Timer(const Duration(seconds: 45), () {
         if (!completer.isCompleted) {
-          print('$TAG: 请求超时，15秒内没有收到响应');
+          print('$TAG: 请求超时，45秒内没有收到响应');
           completer.completeError('请求超时');
           removeListener(onceListener);
         }
