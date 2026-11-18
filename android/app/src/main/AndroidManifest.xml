@@ -37,6 +37,12 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Fallback entry point for systems that dispatch the assistant gesture
+                 as ACTION_ASSIST instead of invoking VoiceInteractionSession directly. -->
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
         <service
             android:name=".XiaoZhiVoiceInteractionService"
