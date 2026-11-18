@@ -31,6 +31,8 @@ class AudioUtil {
       StreamController<bool>.broadcast();
   static String? _tempFilePath;
   static Timer? _audioProcessingTimer;
+  // Все входящие аудиофрагменты воспроизводятся строго по очереди.
+  static Future<void> _playbackQueue = Future<void>.value();
 
   // Opus相关
   static final _encoder = SimpleOpusEncoder(
@@ -112,7 +114,6 @@ class AudioUtil {
           androidAudioAttributes: AndroidAudioAttributes(
             contentType: AndroidAudioContentType.speech,
             usage: AndroidAudioUsage.voiceCommunication,
-            flags: AndroidAudioFlags.audibilityEnforced,
           ),
           androidAudioFocusGainType:
               AndroidAudioFocusGainType.gainTransientExclusive,
@@ -156,37 +157,40 @@ class AudioUtil {
     }
   }
 
-  /// 播放Opus音频数据
-  static Future<void> playOpusData(Uint8List opusData) async {
-    try {
-      // 如果播放器未初始化，先初始化
-      if (!_isPlayerInitialized || _pcmPlayer == null) {
+  /// 播放Opus音频数据。串行处理，避免音频帧重叠或 перестановки.
+  static Future<void> playOpusData(Uint8List opusData) {
+    final playback = _playbackQueue.then((_) async {
+      try {
+        if (!_isPlayerInitialized || _pcmPlayer == null) {
+          await initPlayer();
+        }
+
+        final Int16List pcmData = _decoder.decode(input: opusData);
+        final Uint8List pcmBytes = Uint8List(pcmData.length * 2);
+        final bytes = ByteData.view(pcmBytes.buffer);
+        for (int i = 0; i < pcmData.length; i++) {
+          bytes.setInt16(i * 2, pcmData[i], Endian.little);
+        }
+
+        if (_pcmPlayer != null) {
+          await _pcmPlayer!.feed(pcmBytes);
+        }
+      } catch (e) {
+        print('$TAG: 播放失败: $e');
+        await stopPlaying();
         await initPlayer();
       }
+    });
+    _playbackQueue = playback.catchError((Object error) {
+      print('$TAG: 音频播放队列错误: $error');
+    });
+    return _playbackQueue;
+  }
 
-      // 解码Opus数据
-      final Int16List pcmData = _decoder.decode(input: opusData);
-
-      // 准备PCM数据（按照示例直接方式）
-      final Uint8List pcmBytes = Uint8List(pcmData.length * 2);
-      ByteData bytes = ByteData.view(pcmBytes.buffer);
-
-      // 使用小端字节序
-      for (int i = 0; i < pcmData.length; i++) {
-        bytes.setInt16(i * 2, pcmData[i], Endian.little);
-      }
-
-      // 直接发送到播放器
-      if (_pcmPlayer != null) {
-        await _pcmPlayer!.feed(pcmBytes);
-      }
-    } catch (e) {
-      print('$TAG: 播放失败: $e');
-
-      // 简单重置并重新初始化
-      await stopPlaying();
-      await initPlayer();
-    }
+  /// Дожидается передачи всех накопленных фрагментов в PCM-плеер и затухания буфера.
+  static Future<void> waitForPlaybackComplete() async {
+    await _playbackQueue;
+    await Future.delayed(const Duration(milliseconds: 400));
   }
 
   /// 停止播放
