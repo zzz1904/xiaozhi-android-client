@@ -171,9 +171,15 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _closeChatForBackground() async {
     if (_backgroundCloseStarted || !mounted) return;
     _backgroundCloseStarted = true;
-    await _shutdownXiaozhiService();
-    if (!mounted) return;
+
+    // Не ждём сетевого отключения: при сворачивании приложение может
+    // быть приостановлено Android раньше, чем disconnect завершится.
+    // Сначала сразу закрываем экран чата и возвращаемся к списку диалогов.
     Navigator.of(context).popUntil((route) => route.isFirst);
+
+    // Остановка микрофона, воспроизведения и соединения выполняется отдельно.
+    // dispose() также использует тот же Future, поэтому очистка не дублируется.
+    unawaited(_shutdownXiaozhiService());
   }
 
   Future<void> _shutdownXiaozhiService() {
