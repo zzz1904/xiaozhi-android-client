@@ -971,71 +971,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildXiaozhiConfigTab() {
-    return Consumer<ConfigProvider>(
-      builder: (context, configProvider, child) {
-        final xiaozhiConfigs = configProvider.xiaozhiConfigs;
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _connectOfficialXiaozhi,
-                  icon: const Icon(Icons.link, color: Colors.white),
-                  label: const Text('Подключить к консоли XiaoZhi'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF222222),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _buildCard(
-                title: 'Настройки сервиса Xiaozhi',
-                subtitle: 'Управление подключениями голосового сервиса Xiaozhi',
-                actionButton: ElevatedButton.icon(
-                  onPressed: _showAddXiaozhiConfigDialog,
-                  icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                  label: const Text(
-                    'Добавить сервис',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF222222),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    elevation: 0,
-                    minimumSize: const Size(100, 36),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    if (xiaozhiConfigs.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: Text('Нет подключённых сервисов Xiaozhi. Нажмите «+», чтобы добавить.')),
-                      )
-                    else
-                      ...xiaozhiConfigs.map(
-                        (config) => _buildXiaozhiConfigCard(config),
-                      ),
-                  ],
-                ),
-              ),
-            ],
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _connectOfficialXiaozhi,
+          icon: const Icon(Icons.link, color: Colors.white),
+          label: const Text('Подключить к консоли XiaoZhi'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF222222),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
