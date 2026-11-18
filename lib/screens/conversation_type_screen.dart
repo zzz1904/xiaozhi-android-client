@@ -34,7 +34,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          '新建对话',
+          'Новый диалог',
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -96,12 +96,12 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '选择对话类型',
+                  'Выберите тип диалога',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '请选择您想要创建的对话类型',
+                  'Выберите, какой диалог хотите создать',
                   style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
                 ),
               ],
@@ -122,7 +122,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
 
                     if (difyConfigs.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('请先在设置中添加Dify配置')),
+                        const SnackBar(content: Text('Сначала добавьте Dify API в настройках')),
                       );
                       return;
                     }
@@ -197,7 +197,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
                         ),
                         const SizedBox(height: 20),
                         const Text(
-                          'Dify文本对话',
+                          'Текстовый диалог Dify',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -205,7 +205,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '基于文本的AI对话',
+                          'Общение с ИИ в текстовом режиме',
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 14,
@@ -227,7 +227,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
 
                     if (xiaozhiConfigs.isEmpty) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('请先在设置中添加小智服务配置')),
+                        const SnackBar(content: Text('Сначала добавьте сервис Xiaozhi в настройках')),
                       );
                       return;
                     }
@@ -305,7 +305,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
                         ),
                         const SizedBox(height: 20),
                         const Text(
-                          '小智语音对话',
+                          'Голосовой диалог Xiaozhi',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
@@ -313,7 +313,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '支持文字和语音交流',
+                          'Общение текстом и голосом',
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 14,
@@ -358,12 +358,12 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '选择小智服务',
+                  'Выберите сервис Xiaozhi',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '请选择要使用的小智语音服务',
+                  'Выберите голосовой сервис Xiaozhi',
                   style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
                 ),
               ],
@@ -538,7 +538,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
               ),
               const SizedBox(width: 16),
               const Text(
-                '服务详情',
+                'Информация о сервисе',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ],
@@ -547,8 +547,8 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
           _buildDetailItemXiaozhi('WebSocket', config.websocketUrl),
           const SizedBox(height: 12),
           _buildDetailItemXiaozhi(
-            'MAC地址',
-            config.macAddress.isEmpty ? '自动生成' : config.macAddress,
+            'MAC-адрес',
+            config.macAddress.isEmpty ? 'Создаётся автоматически' : config.macAddress,
           ),
           const SizedBox(height: 12),
           _buildDetailItemXiaozhi(
@@ -627,12 +627,12 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '选择Dify服务',
+                  'Выберите сервис Dify',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '请选择要使用的Dify API服务',
+                  'Выберите подключение Dify API',
                   style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
                 ),
               ],
@@ -807,7 +807,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
               ),
               const SizedBox(width: 16),
               const Text(
-                '服务详情',
+                'Информация о сервисе',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ],
@@ -901,7 +901,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
                   : Colors.black.withOpacity(0.3),
         ),
         child: const Text(
-          '创建对话',
+          'Создать диалог',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
       ),
@@ -922,7 +922,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
       context,
       listen: false,
     ).createConversation(
-      title: '与 ${config.name} 的对话',
+      title: 'Диалог с ${config.name}',
       type: ConversationType.dify,
       configId: config.id,
     );
@@ -942,7 +942,7 @@ class _ConversationTypeScreenState extends State<ConversationTypeScreen> {
       context,
       listen: false,
     ).createConversation(
-      title: '与 ${config.name} 的对话',
+      title: 'Диалог с ${config.name}',
       type: ConversationType.xiaozhi,
       configId: config.id,
     );
