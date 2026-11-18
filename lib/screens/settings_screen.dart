@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import 'package:provider/provider.dart';
-import 'package:ai_assistant/providers/theme_provider.dart';
 import 'package:ai_assistant/providers/config_provider.dart';
 import 'package:ai_assistant/models/xiaozhi_config.dart';
 import 'package:ai_assistant/models/dify_config.dart';
@@ -19,8 +18,7 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen>
-    with SingleTickerProviderStateMixin {
+class _SettingsScreenState extends State<SettingsScreen> {
   // 移除单个Dify配置控制器
   // final _difyApiKeyController = TextEditingController();
   // final _difyApiUrlController = TextEditingController();
@@ -30,8 +28,6 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _newDifyApiKeyController = TextEditingController();
   final _newDifyApiUrlController = TextEditingController();
 
-  late TabController _tabController;
-  int _currentTabIndex = 0;
 
   @override
   void initState() {
@@ -40,16 +36,6 @@ class _SettingsScreenState extends State<SettingsScreen>
 
     // 保存Provider引用，以便在dispose中安全使用
     _configProvider = configProvider;
-
-    // 初始化选项卡控制器
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (_tabController.indexIsChanging) {
-        setState(() {
-          _currentTabIndex = _tabController.index;
-        });
-      }
-    });
 
     // 删除旧的单个配置初始化代码
   }
@@ -67,7 +53,6 @@ class _SettingsScreenState extends State<SettingsScreen>
     _newDifyApiKeyController.dispose();
     _newDifyApiUrlController.dispose();
 
-    _tabController.dispose();
     super.dispose();
   }
 
@@ -97,142 +82,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
         ),
       ),
-      body: Column(
-        children: [
-          _buildTabBar(),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildGeneralTab(),
-                _buildXiaozhiConfigTab(),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabBar() {
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceVariant,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 2,
-              spreadRadius: 0,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: TabBar(
-          controller: _tabController,
-          indicator: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(10),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          indicatorPadding: const EdgeInsets.symmetric(
-            horizontal: 4,
-            vertical: 3,
-          ),
-          labelPadding: EdgeInsets.zero,
-          padding: EdgeInsets.zero,
-          indicatorSize: TabBarIndicatorSize.tab,
-          labelColor: Theme.of(context).colorScheme.onSurface,
-          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
-          dividerColor: Colors.transparent,
-          overlayColor: MaterialStateProperty.all(Colors.transparent),
-          splashFactory: NoSplash.splashFactory,
-          labelStyle: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
-          ),
-          tabs: const [Tab(text: 'Общие'), Tab(text: 'Сервис XiaoZhi')],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGeneralTab() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCard(
-              title: 'Внешний вид',
-              subtitle: 'Настройка внешнего вида приложения',
-              child: Column(
-                children: [
-                  Consumer<ThemeProvider>(
-                    builder: (context, themeProvider, child) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 20,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  width: 24,
-                                  height: 24,
-                                  child: Icon(
-                                    Icons.dark_mode,
-                                    color: Theme.of(context).colorScheme.onSurface,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Тёмная тема',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Switch.adaptive(
-                              value: themeProvider.isDarkMode,
-                              onChanged: (value) {
-                                themeProvider.toggleTheme();
-                              },
-                              activeColor: Theme.of(context).colorScheme.primary,
-                              inactiveTrackColor: const Color(0xFFE0E0E0),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      body: _buildXiaozhiConfigTab(),
     );
   }
 

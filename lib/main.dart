@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
-import 'package:ai_assistant/providers/theme_provider.dart';
 import 'package:ai_assistant/providers/config_provider.dart';
 import 'package:ai_assistant/providers/conversation_provider.dart';
 import 'package:ai_assistant/screens/home_screen.dart';
@@ -17,7 +16,6 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:ai_assistant/utils/audio_util.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // 是否启用调试工具
 const bool enableDebugTools = true;
@@ -104,7 +102,6 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider.value(value: configProvider),
         ChangeNotifierProvider(create: (_) => ConversationProvider()),
       ],
@@ -116,13 +113,11 @@ void main() async {
 // 设置系统UI沉浸式效果
 Future<void> _setupSystemUI() async {
   // 设置状态栏和导航栏透明
-  final prefs = await SharedPreferences.getInstance();
-  final dark = prefs.getBool('isDarkMode') ?? false;
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-    systemNavigationBarColor: dark ? const Color(0xFF121212) : const Color(0xFFF7F8FA),
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+    systemNavigationBarColor: const Color(0xFFF7F8FA),
     systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
     systemNavigationBarDividerColor: Colors.transparent,
   ));
@@ -144,14 +139,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
     return MaterialApp(
-      title: 'Сяочжи AI',
+      title: 'zzz ai',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeProvider.themeMode,
       home: const HomeScreen(),
       routes: {
         // 添加测试界面路由

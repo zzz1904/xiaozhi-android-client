@@ -29,6 +29,13 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (assistantLaunchPending) {
+            assistantChannel?.invokeMethod("assistantLaunch", null)
+        }
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
