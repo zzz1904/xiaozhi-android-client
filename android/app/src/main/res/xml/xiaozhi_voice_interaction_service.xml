@@ -2,4 +2,4 @@
 <voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:sessionService="com.lhht.ai_assistant.XiaoZhiVoiceInteractionSessionService"
     android:recognitionService="com.lhht.ai_assistant.XiaoZhiRecognitionService"
-    android:supportsAssist="false" />
+    android:supportsAssist="true" />
