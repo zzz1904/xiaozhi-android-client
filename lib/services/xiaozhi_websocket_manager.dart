@@ -107,7 +107,7 @@ class XiaozhiWebSocketManager {
         // 添加Authorization头，参考Java实现
         if (_enableToken && token.isNotEmpty) {
           headers['Authorization'] = 'Bearer $token';
-          print('$TAG: 添加Authorization头: Bearer $token');
+          print('$TAG: Добавлен заголовок авторизации');
         }
 
         // 使用IOWebSocketChannel并传递headers
