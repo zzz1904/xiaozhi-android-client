@@ -196,15 +196,16 @@ class _ChatScreenState extends State<ChatScreen> {
     // 添加消息监听器
     _xiaozhiService!.addListener(_handleXiaozhiMessage);
 
-    // 连接服务
+    // Подключение
     try {
-      await _xiaozhiService!.connect();
-
-      // Системный вызов запускает непрерывный голосовой режим
-      // внутри обычного текстового чата.
       if (widget.assistantMode) {
+        // Сначала ждём hello: сервер должен выдать свою session_id.
+        // Только после этого включаем микрофон и отправляем listen/start.
+        await _xiaozhiService!.connectAndWaitForHello();
         await _xiaozhiService!.switchToVoiceCallMode();
         await _xiaozhiService!.startListeningCall();
+      } else {
+        await _xiaozhiService!.connect();
       }
 
       if (mounted) {

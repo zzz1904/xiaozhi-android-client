@@ -59,6 +59,7 @@ class XiaozhiService {
   WebSocketChannel? _ws;
   bool _hasStartedCall = false;
   MessageListener? _messageListener;
+  Completer<void>? _helloCompleter;
 
   /// 工厂构造函数，实现单例模式
   factory XiaozhiService({
@@ -212,6 +213,21 @@ class XiaozhiService {
       _dispatchEvent(
         XiaozhiServiceEvent(XiaozhiServiceEventType.error, '连接小智服务失败: $e'),
       );
+    }
+  }
+
+  /// Подключается и дожидается подтверждения hello от сервера.
+  /// Это гарантирует, что серверная session_id получена до отправки аудио.
+  Future<void> connectAndWaitForHello() async {
+    final completer = Completer<void>();
+    _helloCompleter = completer;
+    await connect();
+    try {
+      await completer.future.timeout(const Duration(seconds: 12));
+    } finally {
+      if (identical(_helloCompleter, completer)) {
+        _helloCompleter = null;
+      }
     }
   }
 
@@ -615,6 +631,10 @@ class XiaozhiService {
       // 根据消息类型分发事件
       switch (type) {
         case 'hello':
+          // Сервер подтвердил соединение и передал актуальный session_id.
+          if (_helloCompleter != null && !_helloCompleter!.isCompleted) {
+            _helloCompleter!.complete();
+          }
           // 处理服务器的hello响应
           if (_isVoiceCallActive && !_hasStartedCall) {
             _hasStartedCall = true;
@@ -624,8 +644,9 @@ class XiaozhiService {
           break;
 
         case 'start':
-          // 收到start响应后，如果是语音通话模式，开始录音
-          if (_isVoiceCallActive) {
+          // Старый сценарий запуска через speak/start. Не запускаем второй
+          // поток записи, если чат уже отправил listen/start самостоятельно.
+          if (_isVoiceCallActive && !_isSpeaking) {
             _sendListenMessage();
           }
           break;
