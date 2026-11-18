@@ -60,6 +60,9 @@ class XiaozhiService {
   bool _hasStartedCall = false;
   MessageListener? _messageListener;
   Completer<void>? _helloCompleter;
+  bool _assistantAutoListenAfterTts = false;
+  bool _assistantPausedForTts = false;
+  Future<void> _assistantAudioTransition = Future<void>.value();
 
   /// 工厂构造函数，实现单例模式
   factory XiaozhiService({
@@ -122,6 +125,37 @@ class XiaozhiService {
       print('$TAG: 切换到语音通话模式失败: $e');
       rethrow;
     }
+  }
+
+  /// Включает автоматическое возобновление микрофона после ответа XiaoZhi.
+  void setAssistantAutoListenAfterTts(bool enabled) {
+    _assistantAutoListenAfterTts = enabled;
+    if (!enabled) _assistantPausedForTts = false;
+  }
+
+  /// Переключает микрофон вслед за состояниями TTS сервера.
+  void _handleAssistantTtsState(String state) {
+    if (!_assistantAutoListenAfterTts || !_isVoiceCallActive) return;
+    _assistantAudioTransition = _assistantAudioTransition.then((_) async {
+      if (!_assistantAutoListenAfterTts || !_isVoiceCallActive) return;
+      if (state == 'start') {
+        if (_assistantPausedForTts) return;
+        _assistantPausedForTts = true;
+        await _audioStreamSubscription?.cancel();
+        _audioStreamSubscription = null;
+        await AudioUtil.stopRecording();
+        print('$TAG: микрофон приостановлен на время ответа XiaoZhi');
+      } else if (state == 'stop' && _assistantPausedForTts) {
+        _assistantPausedForTts = false;
+        await Future.delayed(const Duration(milliseconds: 250));
+        if (_assistantAutoListenAfterTts && _isVoiceCallActive) {
+          await startListeningCall();
+          print('$TAG: микрофон снова слушает после ответа XiaoZhi');
+        }
+      }
+    }).catchError((Object error) {
+      print('$TAG: ошибка переключения микрофона после TTS: $error');
+    });
   }
 
   /// 切换到普通聊天模式
@@ -434,6 +468,10 @@ class XiaozhiService {
 
   /// 开始听说（语音通话模式）
   Future<void> startListeningCall() async {
+    if (_audioStreamSubscription != null) {
+      print('$TAG: микрофон уже запущен, повторный запуск пропущен');
+      return;
+    }
     try {
       // 确保已经有会话ID
       if (_sessionId == null) {
@@ -652,9 +690,11 @@ class XiaozhiService {
           break;
 
         case 'tts':
-          // TTS消息处理
+          // TTS start останавливает отправку микрофона на время ответа.
+          // TTS stop возобновляет автоматическое прослушивание.
           final String state = jsonData['state'] ?? '';
           final String text = jsonData['text'] ?? '';
+          _handleAssistantTtsState(state);
 
           if (state == 'sentence_start' && text.isNotEmpty) {
             print('$TAG: 收到TTS句子: $text');

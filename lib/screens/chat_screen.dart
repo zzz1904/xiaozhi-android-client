@@ -195,6 +195,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // 添加消息监听器
     _xiaozhiService!.addListener(_handleXiaozhiMessage);
+    if (widget.assistantMode) {
+      _xiaozhiService!.setAssistantAutoListenAfterTts(true);
+    }
 
     // Подключение
     try {
