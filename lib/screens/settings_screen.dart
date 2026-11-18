@@ -198,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 Container(
                                   width: 24,
                                   height: 24,
-                                  child: const Icon(
+                                  child: Icon(
                                     Icons.dark_mode,
                                     color: Theme.of(context).colorScheme.onSurface,
                                     size: 22,
