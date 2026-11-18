@@ -53,9 +53,9 @@ void main() async {
     if (Platform.isAndroid) Permission.bluetoothConnect,
   ].request();
 
-  // 添加中文本地化支持
-  timeago.setLocaleMessages('zh', timeago.ZhMessages());
-  timeago.setDefaultLocale('zh');
+  // Русская локализация
+  timeago.setLocaleMessages('ru', timeago.RuMessages());
+  timeago.setDefaultLocale('ru');
 
   // 在Android上设置高刷新率
   if (Platform.isAndroid) {
@@ -146,7 +146,7 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
-      title: 'AI-LHHT',
+      title: 'Сяочжи AI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
