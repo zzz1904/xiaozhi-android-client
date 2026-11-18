@@ -48,17 +48,18 @@ jobs:
 
       - name: Configure persistent Android release signing
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_SIGNING_BUNDLE: ${{ secrets.ANDROID_SIGNING_BUNDLE }}
         run: |
           set -euo pipefail
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
-            echo "Missing signing secrets. Configure ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD in repository Actions secrets."
+          if [ -z "$ANDROID_SIGNING_BUNDLE" ]; then
+            echo "Missing repository secret ANDROID_SIGNING_BUNDLE."
             exit 1
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/release-key.jks
+          echo "$ANDROID_SIGNING_BUNDLE" | base64 --decode > /tmp/xiaozhi-signing.zip
+          mkdir -p /tmp/xiaozhi-signing
+          unzip -q /tmp/xiaozhi-signing.zip -d /tmp/xiaozhi-signing
+          source /tmp/xiaozhi-signing/signing.env
+          install -m 600 /tmp/xiaozhi-signing/xiaozhi-release.jks android/app/release-key.jks
           cat > android/key.properties <<EOF
           storeFile=app/release-key.jks
           storePassword=$ANDROID_KEYSTORE_PASSWORD
