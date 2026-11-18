@@ -16,6 +16,8 @@ class XiaoZhiVoiceInteractionSessionService : VoiceInteractionSessionService() {
 private class XiaoZhiVoiceInteractionSession(context: Context) :
     VoiceInteractionSession(context) {
 
+    private val appContext = context
+
     override fun onPrepareShow(args: Bundle?, showFlags: Int) {
         super.onPrepareShow(args, showFlags)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -25,7 +27,7 @@ private class XiaoZhiVoiceInteractionSession(context: Context) :
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
-        val launchIntent = Intent(context, MainActivity::class.java).apply {
+        val launchIntent = Intent(appContext, MainActivity::class.java).apply {
             putExtra(MainActivity.EXTRA_ASSISTANT_LAUNCH, true)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
