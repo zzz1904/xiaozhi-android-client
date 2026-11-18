@@ -5,12 +5,18 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import android.service.voice.VoiceInteractionSession
 import android.service.voice.VoiceInteractionSessionService
 
 class XiaoZhiVoiceInteractionSessionService : VoiceInteractionSessionService() {
     override fun onNewSession(args: Bundle?): VoiceInteractionSession {
+        Log.i(TAG, "XiaoZhi voice session created by system")
         return XiaoZhiVoiceInteractionSession(this)
+    }
+
+    companion object {
+        private const val TAG = "XiaoZhiAssistant"
     }
 }
 
@@ -21,6 +27,7 @@ private class XiaoZhiVoiceInteractionSession(context: Context) :
 
     override fun onPrepareShow(args: Bundle?, showFlags: Int) {
         super.onPrepareShow(args, showFlags)
+        Log.i(TAG, "XiaoZhi assistant session prepared")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             setUiEnabled(false)
         }
@@ -28,7 +35,13 @@ private class XiaoZhiVoiceInteractionSession(context: Context) :
 
     override fun onShow(args: Bundle?, showFlags: Int) {
         super.onShow(args, showFlags)
-        Log.i(TAG, "XiaoZhi assistant invoked by system")
+        Log.i(TAG, "DIAGNOSTIC: SYSTEM INVOKED XIAOZHI SESSION")
+        Toast.makeText(
+            appContext,
+            "XiaoZhi: системный вызов получен",
+            Toast.LENGTH_LONG
+        ).show()
+
         val launchIntent = Intent(appContext, MainActivity::class.java).apply {
             action = Intent.ACTION_MAIN
             addCategory(Intent.CATEGORY_LAUNCHER)
