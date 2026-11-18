@@ -7,6 +7,7 @@ import 'package:ai_assistant/models/xiaozhi_config.dart';
 import 'package:ai_assistant/models/dify_config.dart';
 import 'package:ai_assistant/widgets/settings_section.dart';
 import 'package:ai_assistant/services/dify_service.dart';
+import 'package:ai_assistant/screens/xiaozhi_pairing_screen.dart';
 
 // 引入main.dart中定义的常量
 import 'package:ai_assistant/main.dart' show enableDebugTools;
@@ -1096,6 +1097,17 @@ class _SettingsScreenState extends State<SettingsScreen>
     );
   }
 
+  Future<void> _connectOfficialXiaozhi() async {
+    final connected = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const XiaozhiPairingScreen()),
+    );
+    if (connected == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Устройство подключено к консоли XiaoZhi')),
+      );
+    }
+  }
+
   Widget _buildXiaozhiConfigTab() {
     return Consumer<ConfigProvider>(
       builder: (context, configProvider, child) {
@@ -1106,6 +1118,20 @@ class _SettingsScreenState extends State<SettingsScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _connectOfficialXiaozhi,
+                  icon: const Icon(Icons.link, color: Colors.white),
+                  label: const Text('Подключить к официальной консоли XiaoZhi'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF222222),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               _buildCard(
                 title: 'Настройки сервиса Xiaozhi',
                 subtitle: 'Управление подключениями голосового сервиса Xiaozhi',
@@ -1637,6 +1663,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                           websocketUrl,
                           customMacAddress:
                               macAddress.isNotEmpty ? macAddress : null,
+                          token: token.isNotEmpty ? token : null,
                         );
 
                         Navigator.pop(context);

@@ -178,6 +178,7 @@ class _ChatScreenState extends State<ChatScreen> {
       websocketUrl: xiaozhiConfig.websocketUrl,
       macAddress: xiaozhiConfig.macAddress,
       token: xiaozhiConfig.token,
+      clientId: xiaozhiConfig.clientId,
     );
 
     // 添加消息监听器

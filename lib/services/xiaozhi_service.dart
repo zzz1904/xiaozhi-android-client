@@ -47,6 +47,7 @@ class XiaozhiService {
   final String websocketUrl;
   final String macAddress;
   final String token;
+  final String clientId;
   String? _sessionId; // 会话ID将由服务器提供
 
   XiaozhiWebSocketManager? _webSocketManager;
@@ -64,12 +65,23 @@ class XiaozhiService {
     required String websocketUrl,
     required String macAddress,
     required String token,
+    String? clientId,
     String? sessionId,
   }) {
-    _instance ??= XiaozhiService._internal(
+    final resolvedClientId = clientId ?? macAddress;
+    final current = _instance;
+    if (current != null &&
+        current.websocketUrl == websocketUrl &&
+        current.macAddress == macAddress &&
+        current.token == token &&
+        current.clientId == resolvedClientId) {
+      return current;
+    }
+    _instance = XiaozhiService._internal(
       websocketUrl: websocketUrl,
       macAddress: macAddress,
       token: token,
+      clientId: resolvedClientId,
       sessionId: sessionId,
     );
     return _instance!;
@@ -80,6 +92,7 @@ class XiaozhiService {
     required this.websocketUrl,
     required this.macAddress,
     required this.token,
+    required this.clientId,
     String? sessionId,
   }) {
     _sessionId = sessionId;
@@ -140,6 +153,7 @@ class XiaozhiService {
     // 初始化WebSocket管理器，启用 token
     _webSocketManager = XiaozhiWebSocketManager(
       deviceId: macAddress,
+      clientId: clientId,
       enableToken: true,
     );
 

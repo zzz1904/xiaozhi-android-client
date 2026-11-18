@@ -28,6 +28,7 @@ class XiaozhiWebSocketManager {
   WebSocketChannel? _channel;
   String? _serverUrl;
   String? _deviceId;
+  String? _clientId;
   String? _token;
   bool _enableToken;
 
@@ -37,9 +38,13 @@ class XiaozhiWebSocketManager {
   StreamSubscription? _streamSubscription;
 
   /// 构造函数
-  XiaozhiWebSocketManager({required String deviceId, bool enableToken = false})
-    : _deviceId = deviceId,
-      _enableToken = enableToken;
+  XiaozhiWebSocketManager({
+    required String deviceId,
+    String? clientId,
+    bool enableToken = false,
+  }) : _deviceId = deviceId,
+       _clientId = clientId ?? deviceId,
+       _enableToken = enableToken;
 
   /// 添加事件监听器
   void addListener(XiaozhiWebSocketListener listener) {
@@ -95,7 +100,7 @@ class XiaozhiWebSocketManager {
         // 创建headers
         Map<String, dynamic> headers = {
           'device-id': _deviceId ?? '',
-          'client-id': _deviceId ?? '',
+          'client-id': _clientId ?? '',
           'protocol-version': '1',
         };
 
@@ -103,9 +108,6 @@ class XiaozhiWebSocketManager {
         if (_enableToken && token.isNotEmpty) {
           headers['Authorization'] = 'Bearer $token';
           print('$TAG: 添加Authorization头: Bearer $token');
-        } else {
-          headers['Authorization'] = 'Bearer test-token';
-          print('$TAG: 添加默认Authorization头: Bearer test-token');
         }
 
         // 使用IOWebSocketChannel并传递headers
@@ -123,15 +125,14 @@ class XiaozhiWebSocketManager {
         Timer(Duration(milliseconds: 100), () {
           if (_channel != null && isConnected) {
             // 发送认证信息作为第一条消息
-            String authMessage =
-                'Authorization: Bearer ${_enableToken && token.isNotEmpty ? token : "test-token"}';
-            _channel!.sink.add(authMessage);
-            print('$TAG: 发送认证消息: $authMessage');
+            if (_enableToken && token.isNotEmpty) {
+              final authMessage = 'Authorization: Bearer $token';
+              _channel!.sink.add(authMessage);
+            }
 
             // 发送设备ID信息
-            String deviceIdMessage = 'Device-ID: $_deviceId';
-            _channel!.sink.add(deviceIdMessage);
-            print('$TAG: 发送设备ID消息: $deviceIdMessage');
+            _channel!.sink.add('Device-ID: $_deviceId');
+            _channel!.sink.add('Client-ID: $_clientId');
           }
         });
       }

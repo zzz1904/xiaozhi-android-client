@@ -4,6 +4,7 @@ class XiaozhiConfig {
   final String websocketUrl;
   final String macAddress;
   final String token;
+  final String clientId;
   
   XiaozhiConfig({
     required this.id,
@@ -11,6 +12,7 @@ class XiaozhiConfig {
     required this.websocketUrl,
     required this.macAddress,
     required this.token,
+    this.clientId = '',
   });
   
   factory XiaozhiConfig.fromJson(Map<String, dynamic> json) {
@@ -19,7 +21,8 @@ class XiaozhiConfig {
       name: json['name'],
       websocketUrl: json['websocketUrl'],
       macAddress: json['macAddress'],
-      token: json['token'],
+      token: json['token'] ?? '',
+      clientId: json['clientId'] ?? json['macAddress'] ?? '',
     );
   }
   
@@ -30,6 +33,7 @@ class XiaozhiConfig {
       'websocketUrl': websocketUrl,
       'macAddress': macAddress,
       'token': token,
+      'clientId': clientId,
     };
   }
   
@@ -38,6 +42,7 @@ class XiaozhiConfig {
     String? websocketUrl,
     String? macAddress,
     String? token,
+    String? clientId,
   }) {
     return XiaozhiConfig(
       id: id,
@@ -45,6 +50,7 @@ class XiaozhiConfig {
       websocketUrl: websocketUrl ?? this.websocketUrl,
       macAddress: macAddress ?? this.macAddress,
       token: token ?? this.token,
+      clientId: clientId ?? this.clientId,
     );
   }
 }

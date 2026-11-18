@@ -76,23 +76,55 @@ class ConfigProvider extends ChangeNotifier {
     await prefs.setStringList('difyConfigs', difyConfigsJson);
   }
 
+  Future<Map<String, String>> getXiaozhiIdentity() async {
+    final prefs = await SharedPreferences.getInstance();
+    var deviceId = prefs.getString('xiaozhiDeviceId');
+    if (deviceId == null || deviceId.isEmpty) {
+      deviceId = await _getDeviceMacAddress();
+      await prefs.setString('xiaozhiDeviceId', deviceId);
+    }
+    var clientId = prefs.getString('xiaozhiClientId');
+    if (clientId == null || clientId.isEmpty) {
+      clientId = const Uuid().v4();
+      await prefs.setString('xiaozhiClientId', clientId);
+    }
+    return {'deviceId': deviceId, 'clientId': clientId};
+  }
+
   Future<void> addXiaozhiConfig(
     String name,
     String websocketUrl, {
     String? customMacAddress,
+    String? token,
+    String? clientId,
   }) async {
-    // 如果提供了自定义MAC地址，直接使用；否则使用设备ID生成
     final macAddress = customMacAddress ?? await _getDeviceMacAddress();
-
+    final resolvedClientId = clientId ?? const Uuid().v4();
     final newConfig = XiaozhiConfig(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
       websocketUrl: websocketUrl,
       macAddress: macAddress,
-      token: 'test-token',
+      token: token ?? 'test-token',
+      clientId: resolvedClientId,
     );
 
-    _xiaozhiConfigs.add(newConfig);
+    final existingIndex = _xiaozhiConfigs.indexWhere(
+      (config) => config.clientId == resolvedClientId,
+    );
+    if (existingIndex >= 0) {
+      final previous = _xiaozhiConfigs[existingIndex];
+      _xiaozhiConfigs[existingIndex] = XiaozhiConfig(
+        id: previous.id,
+        name: newConfig.name,
+        websocketUrl: newConfig.websocketUrl,
+        macAddress: newConfig.macAddress,
+        token: newConfig.token,
+        clientId: newConfig.clientId,
+      );
+    } else {
+      _xiaozhiConfigs.add(newConfig);
+    }
     await _saveConfigs();
     notifyListeners();
   }
