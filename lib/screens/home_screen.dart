@@ -23,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   static const MethodChannel _assistantChannel = MethodChannel('xiaozhi/assistant');
   bool _assistantLaunchInProgress = false;
+  bool _creatingConversation = false;
 
   @override
   void initState() {
@@ -100,6 +101,60 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } finally {
       _assistantLaunchInProgress = false;
+    }
+  }
+
+  Future<void> _createNewConversation() async {
+    if (_creatingConversation) return;
+    setState(() => _creatingConversation = true);
+    try {
+      final configProvider = context.read<ConfigProvider>();
+      final conversationProvider = context.read<ConversationProvider>();
+
+      // Дожидаемся загрузки сохранённых подключений и списка диалогов.
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (!mounted) return;
+        if (configProvider.isLoaded && conversationProvider.isLoaded) break;
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (!mounted) return;
+      if (!configProvider.isLoaded || !conversationProvider.isLoaded) {
+        throw Exception('Не удалось загрузить настройки приложения');
+      }
+
+      if (configProvider.xiaozhiConfigs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Сначала подключите сервис XiaoZhi в настройках'),
+          ),
+        );
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        );
+        return;
+      }
+
+      // Подключение одно, поэтому сразу используем его без экрана выбора.
+      final config = configProvider.xiaozhiConfigs.first;
+      final conversation = await conversationProvider.createConversation(
+        title: 'Диалог с ${config.name}',
+        type: ConversationType.xiaozhi,
+        configId: config.id,
+      );
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(conversation: conversation),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось создать диалог: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _creatingConversation = false);
     }
   }
 
@@ -208,16 +263,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     ],
                   ),
                   child: FloatingActionButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ConversationTypeScreen(),
-                        ),
-                      );
-                    },
+                    onPressed: _creatingConversation ? null : _createNewConversation,
                     backgroundColor: Colors.black,
-                    child: const Icon(Icons.add, size: 30, color: Colors.white),
+                    child: _creatingConversation
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.add, size: 30, color: Colors.white),
                     elevation: 0,
                     shape: const CircleBorder(),
                   ),
