@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - test/build-apk
+      - feature/remove-dify-reference-dark-theme
   workflow_dispatch:
 
 concurrency:

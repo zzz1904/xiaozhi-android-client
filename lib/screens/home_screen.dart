@@ -150,7 +150,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -164,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
         child: Material(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           child: TextField(
             focusNode: _searchFocusNode,
             decoration: InputDecoration(
@@ -188,8 +188,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               filled: true,
-              fillColor: Colors.white,
-              focusColor: Colors.white,
+              fillColor: Theme.of(context).colorScheme.surface,
+              focusColor: Theme.of(context).colorScheme.surface,
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
                 vertical: 16,
