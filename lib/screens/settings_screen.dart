@@ -88,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           icon: const Icon(Icons.arrow_back, size: 26),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        title: const Text(
+        title: Text(
           'Настройки',
           style: TextStyle(
             color: Theme.of(context).colorScheme.onSurface,

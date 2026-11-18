@@ -44,12 +44,12 @@ class _HomeScreenState extends State<HomeScreen> {
             _selectedIndex == 1
                 ? null
                 : AppBar(
-                  title: const Text(
+                  title: Text(
                     'Диалоги',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 28,
-                      color: Colors.black,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
                   ),
                   elevation: 0,
