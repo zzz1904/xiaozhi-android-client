@@ -330,11 +330,12 @@ class XiaozhiService {
       print('$TAG: 正在连接 $websocketUrl');
       print('$TAG: 设备ID: $macAddress');
       print('$TAG: Token启用: true');
-      print('$TAG: 使用Token: $token');
+      print('$TAG: Токен авторизации получен');
 
       // 使用 WebSocketManager 连接
       _webSocketManager = XiaozhiWebSocketManager(
         deviceId: macAddress,
+        clientId: clientId,
         enableToken: true,
       );
       _webSocketManager!.addListener(_onWebSocketEvent);

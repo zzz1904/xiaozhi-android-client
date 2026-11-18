@@ -80,7 +80,7 @@ class ConfigProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     var deviceId = prefs.getString('xiaozhiDeviceId');
     if (deviceId == null || deviceId.isEmpty) {
-      deviceId = await _getDeviceMacAddress();
+      deviceId = _generateMacFromDeviceId(const Uuid().v4());
       await prefs.setString('xiaozhiDeviceId', deviceId);
     }
     var clientId = prefs.getString('xiaozhiClientId');
@@ -105,7 +105,7 @@ class ConfigProvider extends ChangeNotifier {
       name: name,
       websocketUrl: websocketUrl,
       macAddress: macAddress,
-      token: token ?? 'test-token',
+      token: token ?? '',
       clientId: resolvedClientId,
     );
 
@@ -235,6 +235,10 @@ class ConfigProvider extends ChangeNotifier {
       macParts.add(hash.substring(i * 2, i * 2 + 2));
     }
 
+    final firstOctet = int.parse(macParts[0], radix: 16);
+    macParts[0] = ((firstOctet & 0xFC) | 0x02)
+        .toRadixString(16)
+        .padLeft(2, '0');
     return macParts.join(':');
   }
 
