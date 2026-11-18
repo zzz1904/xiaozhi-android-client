@@ -33,7 +33,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
@@ -42,6 +42,8 @@ class _ChatScreenState extends State<ChatScreen> {
   DifyService? _difyService; // 保持DifyService实例
   Timer? _connectionCheckTimer; // 添加定时器检查连接状态
   Timer? _autoReconnectTimer; // 自动重连定时器
+  bool _backgroundCloseStarted = false;
+  Future<void>? _serviceShutdownFuture;
 
   // 语音输入相关
   bool _isVoiceInputMode = false;
@@ -58,6 +60,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // 设置状态栏为透明并使图标为黑色
     SystemChrome.setSystemUIOverlayStyle(
@@ -156,24 +159,51 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // При уходе приложения в фон закрываем открытый чат и возвращаемся
+    // к списку диалогов. Состояние inactive не используем: оно бывает
+    // при системных уведомлениях и временных перекрытиях экрана.
+    if (state == AppLifecycleState.paused) {
+      _closeChatForBackground();
+    }
+  }
+
+  Future<void> _closeChatForBackground() async {
+    if (_backgroundCloseStarted || !mounted) return;
+    _backgroundCloseStarted = true;
+    await _shutdownXiaozhiService();
+    if (!mounted) return;
+    Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  Future<void> _shutdownXiaozhiService() {
+    return _serviceShutdownFuture ??= _performXiaozhiShutdown();
+  }
+
+  Future<void> _performXiaozhiShutdown() async {
+    final service = _xiaozhiService;
+    if (service == null) return;
+    try {
+      service.setAssistantAutoListenAfterTts(false);
+      await service.switchToChatMode();
+      await service.stopPlayback();
+      await service.disconnect();
+    } catch (e) {
+      debugPrint('Не удалось полностью закрыть сессию XiaoZhi: $e');
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _textController.dispose();
     _scrollController.dispose();
-    // 取消所有定时器
     _connectionCheckTimer?.cancel();
     _autoReconnectTimer?.cancel();
     _waveAnimationTimer?.cancel();
 
-    // 在销毁前确保停止所有音频播放
-    if (_xiaozhiService != null) {
-      _xiaozhiService!.removeListener(_handleXiaozhiMessage);
-      if (widget.assistantMode) {
-        _xiaozhiService!.switchToChatMode();
-      } else {
-        _xiaozhiService!.stopPlayback();
-        _xiaozhiService!.disconnect();
-      }
-    }
+    // Гарантированно останавливаем микрофон, звук и соединение.
+    _shutdownXiaozhiService();
 
     super.dispose();
   }
