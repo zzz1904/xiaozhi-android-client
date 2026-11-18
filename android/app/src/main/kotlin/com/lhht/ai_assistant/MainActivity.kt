@@ -1,6 +1,7 @@
 package com.lhht.ai_assistant
 
 import android.content.Intent
+import android.widget.Toast
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -13,6 +14,9 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         assistantLaunchPending =
             assistantLaunchPending || isAssistantLaunchIntent(intent)
+        if (assistantLaunchPending) {
+            Toast.makeText(this, "XiaoZhi: приложение открыто", Toast.LENGTH_LONG).show()
+        }
         assistantChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             ASSISTANT_CHANNEL
@@ -41,6 +45,7 @@ class MainActivity : FlutterActivity() {
         setIntent(intent)
         if (isAssistantLaunchIntent(intent)) {
             assistantLaunchPending = true
+            Toast.makeText(this, "XiaoZhi: приложение открыто", Toast.LENGTH_LONG).show()
             assistantChannel?.invokeMethod("assistantLaunch", null)
         }
     }
