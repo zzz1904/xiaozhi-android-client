@@ -55,5 +55,4 @@ private class XiaoZhiVoiceInteractionSession(context: Context) :
     companion object {
         private const val TAG = "XiaoZhiAssistant"
     }
-    }
 }
