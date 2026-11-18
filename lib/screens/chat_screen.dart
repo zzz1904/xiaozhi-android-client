@@ -473,7 +473,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ],
                               ),
                               child: const Text(
-                                '文本',
+                                'Текст',
                                 style: TextStyle(
                                   color: Colors.blue,
                                   fontSize: 12,
