@@ -43,7 +43,6 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
     dividerColor: const Color(0xFFE5E5E5),
-    dialogTheme: const DialogTheme(backgroundColor: Colors.white),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: Colors.white, selectedItemColor: Color(0xFF202124),
       unselectedItemColor: Color(0xFF757575), type: BottomNavigationBarType.fixed, elevation: 8),
@@ -92,7 +91,6 @@ class AppTheme {
     ),
     dividerColor: const Color(0xFF383838),
     iconTheme: const IconThemeData(color: Color(0xFFE8EAED)),
-    dialogTheme: const DialogTheme(backgroundColor: _darkSurface),
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: _darkSurface, selectedItemColor: Color(0xFFE8EAED),
       unselectedItemColor: Color(0xFF9AA0A6), type: BottomNavigationBarType.fixed, elevation: 8),
