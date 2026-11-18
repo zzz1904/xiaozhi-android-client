@@ -48,8 +48,20 @@
                 <action android:name="android.service.voice.VoiceInteractionService" />
             </intent-filter>
             <meta-data
-                android:name="android.voice_interaction_service"
+                android:name="android.voice_interaction"
                 android:resource="@xml/xiaozhi_voice_interaction_service" />
+        </service>
+        <service
+            android:name=".XiaoZhiRecognitionService"
+            android:label="Сяочжи AI"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.speech.RecognitionService" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.speech"
+                android:resource="@xml/xiaozhi_recognition_service" />
         </service>
         <service
             android:name=".XiaoZhiVoiceInteractionSessionService"
