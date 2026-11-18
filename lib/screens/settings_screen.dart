@@ -87,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
-          '设置',
+          'Настройки',
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.bold,
@@ -164,7 +164,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             fontWeight: FontWeight.w500,
             fontSize: 16,
           ),
-          tabs: const [Tab(text: '通用'), Tab(text: 'Dify配置'), Tab(text: '小智服务')],
+          tabs: const [Tab(text: 'Общие'), Tab(text: 'Настройки Dify'), Tab(text: 'Сервис Xiaozhi')],
         ),
       ),
     );
@@ -178,8 +178,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildCard(
-              title: '外观',
-              subtitle: '调整应用的外观设置',
+              title: 'Внешний вид',
+              subtitle: 'Настройка внешнего вида приложения',
               child: Column(
                 children: [
                   Consumer<ThemeProvider>(
@@ -205,7 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                 ),
                                 const SizedBox(width: 12),
                                 const Text(
-                                  '深色模式',
+                                  'Тёмная тема',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w500,
@@ -246,13 +246,13 @@ class _SettingsScreenState extends State<SettingsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildCard(
-                title: 'Dify API配置',
-                subtitle: '配置并管理多个Dify API服务',
+                title: 'Настройка Dify API',
+                subtitle: 'Настройка и управление подключениями Dify API',
                 actionButton: ElevatedButton.icon(
                   onPressed: _showAddDifyDialog,
                   icon: const Icon(Icons.add, color: Colors.white, size: 18),
                   label: const Text(
-                    '添加配置',
+                    'Добавить конфигурацию',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -274,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     if (difyConfigs.isEmpty)
                       const Padding(
                         padding: EdgeInsets.all(16),
-                        child: Center(child: Text('暂无Dify配置，点击右上角添加')),
+                        child: Center(child: Text('Нет конфигураций Dify. Нажмите «+», чтобы добавить.')),
                       )
                     else
                       ...difyConfigs.map(
@@ -469,7 +469,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          '添加Dify配置',
+                          'Добавить конфигурацию Dify',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -498,12 +498,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '添加新的Dify API配置',
+                      'Новая конфигурация Dify API',
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      '配置名称',
+                      'Название конфигурации',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -527,7 +527,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       child: TextField(
                         controller: _newDifyNameController,
                         decoration: InputDecoration(
-                          hintText: '输入配置名称',
+                          hintText: 'Введите название конфигурации',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -600,7 +600,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         controller: _newDifyApiKeyController,
                         obscureText: true,
                         decoration: InputDecoration(
-                          hintText: '输入API Key',
+                          hintText: 'Введите API-ключ',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -619,7 +619,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
                         if (name.isEmpty || apiUrl.isEmpty || apiKey.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('请填写所有字段')),
+                            const SnackBar(content: Text('Заполните все поля')),
                           );
                           return;
                         }
@@ -632,7 +632,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('已添加Dify配置'),
+                            content: const Text('Конфигурация Dify добавлена'),
                             backgroundColor: Colors.green.shade600,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -653,7 +653,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '添加',
+                        'Добавить',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -672,7 +672,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '取消',
+                        'Отмена',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -723,7 +723,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          '编辑Dify配置',
+                          'Изменить конфигурацию Dify',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -752,12 +752,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '修改Dify API配置',
+                      'Изменение конфигурации Dify API',
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      '配置名称',
+                      'Название конфигурации',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -781,7 +781,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       child: TextField(
                         controller: _newDifyNameController,
                         decoration: InputDecoration(
-                          hintText: '输入配置名称',
+                          hintText: 'Введите название конфигурации',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -854,7 +854,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         controller: _newDifyApiKeyController,
                         obscureText: true,
                         decoration: InputDecoration(
-                          hintText: '输入API Key',
+                          hintText: 'Введите API-ключ',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -874,7 +874,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         if (name.isEmpty || apiUrl.isEmpty || apiKey.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('请填写所有字段'),
+                              content: const Text('Заполните все поля'),
                               backgroundColor: Colors.red.shade600,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
@@ -922,7 +922,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '保存',
+                        'Сохранить',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -941,7 +941,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '取消',
+                        'Отмена',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -1019,7 +1019,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              '确定要删除"${config.name}"配置吗？这个操作不可撤销。',
+                              'Удалить конфигурацию «${config.name}»? Это действие нельзя отменить.',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.red.shade900,
@@ -1050,7 +1050,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         Navigator.of(context).pop();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('已删除配置'),
+                            content: const Text('Конфигурация удалена'),
                             backgroundColor: Colors.green.shade600,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -1061,7 +1061,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         );
                       },
                       child: const Text(
-                        '删除',
+                        'Удалить',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -1081,7 +1081,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '取消',
+                        'Отмена',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -1107,13 +1107,13 @@ class _SettingsScreenState extends State<SettingsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildCard(
-                title: '小智服务配置',
-                subtitle: '管理小智语音服务配置',
+                title: 'Настройки сервиса Xiaozhi',
+                subtitle: 'Управление подключениями голосового сервиса Xiaozhi',
                 actionButton: ElevatedButton.icon(
                   onPressed: _showAddXiaozhiConfigDialog,
                   icon: const Icon(Icons.add, color: Colors.white, size: 18),
                   label: const Text(
-                    '添加服务',
+                    'Добавить сервис',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -1135,7 +1135,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     if (xiaozhiConfigs.isEmpty)
                       const Padding(
                         padding: EdgeInsets.all(16),
-                        child: Center(child: Text('暂无小智服务，点击右上角添加')),
+                        child: Center(child: Text('Нет подключённых сервисов Xiaozhi. Нажмите «+», чтобы добавить.')),
                       )
                     else
                       ...xiaozhiConfigs.map(
@@ -1270,12 +1270,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'MAC地址:',
+                        'MAC-адрес:',
                         style: TextStyle(color: Colors.grey, fontSize: 14),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        config.macAddress.isEmpty ? '未设置' : config.macAddress,
+                        config.macAddress.isEmpty ? 'Не задано' : config.macAddress,
                         style: const TextStyle(fontSize: 14),
                       ),
                     ],
@@ -1291,7 +1291,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        config.token.isEmpty ? '未设置' : config.token,
+                        config.token.isEmpty ? 'Не задано' : config.token,
                         style: const TextStyle(fontSize: 14),
                       ),
                     ],
@@ -1402,7 +1402,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          '添加小智服务',
+                          'Добавить сервис Xiaozhi',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -1431,12 +1431,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '添加新的小智语音服务配置',
+                      'Новое подключение голосового сервиса Xiaozhi',
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      '服务名称',
+                      'Название сервиса',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -1460,7 +1460,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       child: TextField(
                         controller: nameController,
                         decoration: InputDecoration(
-                          hintText: '例如：家庭小智',
+                          hintText: 'Например: Домашний Xiaozhi',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -1472,7 +1472,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'WebSocket地址',
+                      'Адрес WebSocket',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -1496,7 +1496,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       child: TextField(
                         controller: websocketUrlController,
                         decoration: InputDecoration(
-                          hintText: '例如：wss://example.com',
+                          hintText: 'Например: wss://example.com',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -1511,7 +1511,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'MAC地址 (可选)',
+                          'MAC-адрес (необязательно)',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -1538,7 +1538,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         enabled: true,
                         controller: macAddressController,
                         decoration: InputDecoration(
-                          hintText: '留空将自动生成',
+                          hintText: 'Оставьте пустым для автоматической генерации',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -1550,7 +1550,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      '留空将根据设备ID自动生成',
+                      'Если оставить пустым, адрес будет создан по ID устройства',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     const SizedBox(height: 16),
@@ -1574,7 +1574,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
-                            '默认开启',
+                            'Включено по умолчанию',
                             style: TextStyle(color: Colors.grey, fontSize: 14),
                           ),
                         ),
@@ -1617,7 +1617,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         if (name.isEmpty || websocketUrl.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('请填写所有必填字段'),
+                              content: const Text('Заполните все обязательные поля'),
                               backgroundColor: Colors.red.shade600,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
@@ -1642,7 +1642,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('小智服务已添加'),
+                            content: const Text('Сервис Xiaozhi добавлен'),
                             backgroundColor: Colors.green.shade600,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -1663,7 +1663,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '添加',
+                        'Добавить',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -1682,7 +1682,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '取消',
+                        'Отмена',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -1736,7 +1736,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          '编辑小智服务',
+                          'Изменить сервис Xiaozhi',
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -1752,12 +1752,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      '修改小智语音服务配置',
+                      'Изменение подключения голосового сервиса Xiaozhi',
                       style: TextStyle(color: Colors.grey, fontSize: 14),
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      '服务名称',
+                      'Название сервиса',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -1781,7 +1781,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       child: TextField(
                         controller: nameController,
                         decoration: InputDecoration(
-                          hintText: '例如：家庭小智',
+                          hintText: 'Например: Домашний Xiaozhi',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -1793,7 +1793,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'WebSocket地址',
+                      'Адрес WebSocket',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -1817,7 +1817,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       child: TextField(
                         controller: websocketUrlController,
                         decoration: InputDecoration(
-                          hintText: '例如：wss://example.com',
+                          hintText: 'Например: wss://example.com',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -1829,7 +1829,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'MAC地址',
+                      'MAC-адрес',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -1846,7 +1846,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         controller: macAddressController,
                         enabled: true,
                         decoration: InputDecoration(
-                          hintText: '留空将自动生成',
+                          hintText: 'Оставьте пустым для автоматической генерации',
                           hintStyle: TextStyle(color: Colors.grey.shade400),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -1858,7 +1858,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      '留空将根据设备ID自动生成',
+                      'Если оставить пустым, адрес будет создан по ID устройства',
                       style: TextStyle(color: Colors.grey, fontSize: 12),
                     ),
                     const SizedBox(height: 16),
@@ -1882,7 +1882,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
-                            '默认开启',
+                            'Включено по умолчанию',
                             style: TextStyle(color: Colors.grey, fontSize: 14),
                           ),
                         ),
@@ -1925,7 +1925,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         if (name.isEmpty || websocketUrl.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: const Text('请填写所有必填字段'),
+                              content: const Text('Заполните все обязательные поля'),
                               backgroundColor: Colors.red.shade600,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
@@ -1955,7 +1955,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('小智服务已更新'),
+                            content: const Text('Настройки Xiaozhi обновлены'),
                             backgroundColor: Colors.green.shade600,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -1976,7 +1976,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '保存',
+                        'Сохранить',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -1995,7 +1995,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '取消',
+                        'Отмена',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -2057,7 +2057,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      '确定要删除 ${config.name} 吗？',
+                      'Удалить сервис «${config.name}»?',
                       style: const TextStyle(fontSize: 16),
                     ),
                     const SizedBox(height: 24),
@@ -2071,7 +2071,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('小智服务已删除'),
+                            content: const Text('Сервис Xiaozhi удалён'),
                             backgroundColor: Colors.green.shade600,
                             behavior: SnackBarBehavior.floating,
                             shape: RoundedRectangleBorder(
@@ -2092,7 +2092,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '删除',
+                        'Удалить',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -2111,7 +2111,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                       child: const Text(
-                        '取消',
+                        'Отмена',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
