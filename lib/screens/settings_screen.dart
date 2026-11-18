@@ -469,11 +469,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Добавить конфигурацию Dify',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: const Text(
+                            'Добавить конфигурацию Dify',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         Container(
@@ -723,11 +727,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Изменить конфигурацию Dify',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: const Text(
+                            'Изменить конфигурацию Dify',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         Container(
@@ -987,11 +995,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Удалить конфигурацию Dify',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: const Text(
+                            'Удалить конфигурацию Dify',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         IconButton(
@@ -1123,7 +1135,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 child: ElevatedButton.icon(
                   onPressed: _connectOfficialXiaozhi,
                   icon: const Icon(Icons.link, color: Colors.white),
-                  label: const Text('Подключить к официальной консоли XiaoZhi'),
+                  label: const Text('Подключить к консоли XiaoZhi'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF222222),
                     foregroundColor: Colors.white,
@@ -1427,11 +1439,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Добавить сервис Xiaozhi',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: const Text(
+                            'Добавить сервис Xiaozhi',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         Container(
@@ -1762,11 +1778,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Изменить сервис Xiaozhi',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: const Text(
+                            'Изменить сервис Xiaozhi',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         IconButton(
@@ -2067,11 +2087,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Удалить сервис Xiaozhi',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: const Text(
+                            'Удалить сервис Xiaozhi',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                         IconButton(
