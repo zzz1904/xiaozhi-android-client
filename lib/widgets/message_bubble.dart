@@ -161,7 +161,7 @@ class MessageBubble extends StatelessWidget {
     if (message.imageLocalPath != null && message.imageLocalPath!.isNotEmpty) {
       final imageFile = File(message.imageLocalPath!);
       if (!imageFile.existsSync()) {
-        return _buildImagePlaceholder(isUser, "图片已被删除");
+        return _buildImagePlaceholder(isUser, "Изображение удалено");
       }
 
       return Column(
@@ -176,12 +176,12 @@ class MessageBubble extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 print('图片加载失败: $error');
-                return _buildImagePlaceholder(isUser, "图片加载失败");
+                return _buildImagePlaceholder(isUser, "Не удалось загрузить изображение");
               },
             ),
           ),
           if (message.content.isNotEmpty &&
-              !message.content.startsWith("[图片上传中"))
+              !message.content.startsWith("[Загрузка изображения"))
             Padding(
               padding: const EdgeInsets.only(top: 8, left: 8, right: 8),
               child: Text(
