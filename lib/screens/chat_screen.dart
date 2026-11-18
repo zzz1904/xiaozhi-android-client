@@ -21,8 +21,13 @@ import 'package:path_provider/path_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final Conversation conversation;
+  final bool assistantMode;
 
-  const ChatScreen({super.key, required this.conversation});
+  const ChatScreen({
+    super.key,
+    required this.conversation,
+    this.assistantMode = false,
+  });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -32,6 +37,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
+  bool _handsFreeReady = false;
   XiaozhiService? _xiaozhiService; // 保持XiaozhiService实例
   DifyService? _difyService; // 保持DifyService实例
   Timer? _connectionCheckTimer; // 添加定时器检查连接状态
@@ -160,8 +166,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // 在销毁前确保停止所有音频播放
     if (_xiaozhiService != null) {
-      _xiaozhiService!.stopPlayback();
-      _xiaozhiService!.disconnect();
+      _xiaozhiService!.removeListener(_handleXiaozhiMessage);
+      if (widget.assistantMode) {
+        _xiaozhiService!.switchToChatMode();
+      } else {
+        _xiaozhiService!.stopPlayback();
+        _xiaozhiService!.disconnect();
+      }
     }
 
     super.dispose();
@@ -179,17 +190,32 @@ class _ChatScreenState extends State<ChatScreen> {
       macAddress: xiaozhiConfig.macAddress,
       token: xiaozhiConfig.token,
       clientId: xiaozhiConfig.clientId,
+      sessionId: widget.conversation.id,
     );
 
     // 添加消息监听器
     _xiaozhiService!.addListener(_handleXiaozhiMessage);
 
     // 连接服务
-    await _xiaozhiService!.connect();
+    try {
+      await _xiaozhiService!.connect();
 
-    // 连接后刷新UI状态
-    if (mounted) {
-      setState(() {});
+      // Системный вызов запускает непрерывный голосовой режим
+      // внутри обычного текстового чата.
+      if (widget.assistantMode) {
+        await _xiaozhiService!.switchToVoiceCallMode();
+        await _xiaozhiService!.startListeningCall();
+      }
+
+      if (mounted) {
+        setState(() {
+          _handsFreeReady = widget.assistantMode;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        _showCustomSnackbar('Не удалось запустить XiaoZhi: $e');
+      }
     }
   }
 
@@ -296,7 +322,8 @@ class _ChatScreenState extends State<ChatScreen> {
               tooltip: 'Начать новый диалог',
               onPressed: _resetConversation,
             ),
-          if (widget.conversation.type == ConversationType.xiaozhi)
+          if (widget.conversation.type == ConversationType.xiaozhi &&
+              !widget.assistantMode)
             Container(
               margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
@@ -678,6 +705,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildInputArea() {
+    if (widget.assistantMode) {
+      return _buildAssistantListeningArea();
+    }
+
     final bool hasText = _textController.text.trim().isNotEmpty;
 
     // 根据状态决定显示文本输入还是语音输入
@@ -687,6 +718,54 @@ class _ChatScreenState extends State<ChatScreen> {
     } else {
       return _buildTextInputArea(hasText);
     }
+  }
+
+  Widget _buildAssistantListeningArea() {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        20,
+        14,
+        20,
+        14 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.mic,
+            color: _handsFreeReady ? Colors.green : Colors.grey,
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _handsFreeReady
+                  ? 'Слушаю вас. После ответа снова продолжу слушать.'
+                  : 'Подключение к XiaoZhi...',
+              style: const TextStyle(
+                color: Color(0xFF374151),
+                fontSize: 14,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Завершить',
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.close, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
   }
 
   // 文本输入区域

@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_assistant/providers/conversation_provider.dart';
 import 'package:ai_assistant/providers/config_provider.dart';
-import 'package:ai_assistant/screens/voice_call_screen.dart';
 import 'package:ai_assistant/models/conversation.dart';
 import 'package:ai_assistant/screens/chat_screen.dart';
 import 'package:ai_assistant/screens/settings_screen.dart';
@@ -87,9 +86,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => VoiceCallScreen(
+          builder: (_) => ChatScreen(
             conversation: conversation,
-            xiaozhiConfig: config,
+            assistantMode: true,
           ),
         ),
       );
