@@ -1,5 +1,6 @@
 package com.lhht.ai_assistant
 
+import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -11,8 +12,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         assistantLaunchPending =
-            assistantLaunchPending ||
-            intent?.getBooleanExtra(EXTRA_ASSISTANT_LAUNCH, false) == true
+            assistantLaunchPending || isAssistantLaunchIntent(intent)
         assistantChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             ASSISTANT_CHANNEL
@@ -39,10 +39,15 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.getBooleanExtra(EXTRA_ASSISTANT_LAUNCH, false)) {
+        if (isAssistantLaunchIntent(intent)) {
             assistantLaunchPending = true
             assistantChannel?.invokeMethod("assistantLaunch", null)
         }
+    }
+
+    private fun isAssistantLaunchIntent(intent: Intent?): Boolean {
+        return intent?.getBooleanExtra(EXTRA_ASSISTANT_LAUNCH, false) == true ||
+            intent?.action == Intent.ACTION_ASSIST
     }
 
     companion object {
