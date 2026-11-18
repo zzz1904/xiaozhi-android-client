@@ -54,39 +54,44 @@ class ConversationTile extends StatelessWidget {
                       Row(
                         children: [
                           Expanded(
-                            child: Row(
-                              children: [
-                                Text(
-                                  conversation.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.black,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                _buildTypeTag(context),
-                              ],
+                            child: Text(
+                              conversation.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
+                          const SizedBox(width: 8),
                           Text(
                             _formatTime(conversation.lastMessageTime),
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: 12,
                               color: Colors.grey.shade500,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        conversation.lastMessage,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
+                      const SizedBox(height: 7),
+                      Row(
+                        children: [
+                          _buildTypeTag(context),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              conversation.lastMessage,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -109,46 +114,18 @@ class ConversationTile extends StatelessWidget {
 
   Widget _buildTypeTag(BuildContext context) {
     final bool isDify = conversation.type == ConversationType.dify;
-    String label = isDify ? 'Текст' : 'Голос';
-
-    // 如果有配置ID且不为空，则显示配置名称
-    if (conversation.configId.isNotEmpty) {
-      final configProvider = Provider.of<ConfigProvider>(
-        context,
-        listen: false,
-      );
-
-      if (isDify) {
-        // 尝试查找匹配的Dify配置
-        final matchingConfig =
-            configProvider.difyConfigs
-                .where((config) => config.id == conversation.configId)
-                .firstOrNull;
-        if (matchingConfig != null) {
-          label = '${matchingConfig.name}';
-        }
-      } else {
-        // 尝试查找匹配的小智配置
-        final matchingConfig =
-            configProvider.xiaozhiConfigs
-                .where((config) => config.id == conversation.configId)
-                .firstOrNull;
-        if (matchingConfig != null) {
-          label = '${matchingConfig.name}';
-        }
-      }
-    }
+    final label = isDify ? 'Текст' : 'Голос';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: isDify ? Colors.blue.shade50 : Colors.purple.shade50,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 11,
           color: isDify ? Colors.blue.shade600 : Colors.purple.shade600,
         ),
       ),
