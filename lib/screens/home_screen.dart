@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_assistant/providers/conversation_provider.dart';
+import 'package:ai_assistant/providers/config_provider.dart';
+import 'package:ai_assistant/screens/voice_call_screen.dart';
 import 'package:ai_assistant/models/conversation.dart';
 import 'package:ai_assistant/screens/chat_screen.dart';
 import 'package:ai_assistant/screens/settings_screen.dart';
@@ -20,6 +22,87 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   final FocusNode _searchFocusNode = FocusNode();
+  static const MethodChannel _assistantChannel = MethodChannel('xiaozhi/assistant');
+  bool _assistantLaunchInProgress = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _assistantChannel.setMethodCallHandler((call) async {
+      if (call.method == 'assistantLaunch') {
+        final pending = await _assistantChannel.invokeMethod<bool>(
+          'consumeAssistantLaunch',
+        );
+        if (pending == true) _openAssistantVoice();
+      }
+      return null;
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      try {
+        final pending = await _assistantChannel.invokeMethod<bool>(
+          'consumeAssistantLaunch',
+        );
+        if (pending == true) _openAssistantVoice();
+      } on PlatformException catch (e) {
+        debugPrint('Не удалось получить запрос голосового помощника: $e');
+      } on MissingPluginException {
+        // Канал доступен только в Android-сборке с системным помощником.
+      }
+    });
+  }
+
+  Future<void> _openAssistantVoice() async {
+    if (!mounted || _assistantLaunchInProgress) return;
+    _assistantLaunchInProgress = true;
+    try {
+      final configProvider = context.read<ConfigProvider>();
+      final conversationProvider = context.read<ConversationProvider>();
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (!mounted) return;
+        if (configProvider.isLoaded && conversationProvider.isLoaded) break;
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      if (!mounted) return;
+      if (!configProvider.isLoaded || !conversationProvider.isLoaded) {
+        throw Exception('Не удалось загрузить настройки приложения');
+      }
+      if (configProvider.xiaozhiConfigs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Сначала подключите сервис XiaoZhi в настройках'),
+          ),
+        );
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const SettingsScreen()),
+        );
+        return;
+      }
+      final config = configProvider.xiaozhiConfigs.first;
+      final conversation = await conversationProvider.createConversation(
+        title: 'Голосовой помощник XiaoZhi',
+        type: ConversationType.xiaozhi,
+        configId: config.id,
+      );
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => VoiceCallScreen(
+            conversation: conversation,
+            xiaozhiConfig: config,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось запустить XiaoZhi: $e')),
+        );
+      }
+    } finally {
+      _assistantLaunchInProgress = false;
+    }
+  }
 
   @override
   void dispose() {

@@ -10,6 +10,9 @@ import 'package:path_provider/path_provider.dart';
 class ConversationProvider extends ChangeNotifier {
   List<Conversation> _conversations = [];
   Map<String, List<Message>> _messages = {};
+  bool _isLoaded = false;
+
+  bool get isLoaded => _isLoaded;
 
   // 保存最后删除的会话及其消息，用于撤销删除
   Conversation? _lastDeletedConversation;
@@ -74,6 +77,7 @@ class ConversationProvider extends ChangeNotifier {
       }
     }
 
+    _isLoaded = true;
     notifyListeners();
   }
 
