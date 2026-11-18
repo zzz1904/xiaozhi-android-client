@@ -28,7 +28,9 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.lhht.ai_assistant"
+        // A separate application ID lets the new build coexist with the old install
+        // until its console settings have been copied and verified.
+        applicationId = "com.lhht.ai_assistant.v2"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
