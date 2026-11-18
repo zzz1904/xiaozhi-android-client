@@ -76,6 +76,18 @@ jobs:
           print("Added temporary namespace " + namespace + " to " + str(gradle_file))
           PY
 
+      - name: Disable R8 minification for this build
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("android/app/build.gradle.kts")
+          source = path.read_text()
+          source = source.replace("isMinifyEnabled = true", "isMinifyEnabled = false")
+          source = source.replace("isShrinkResources = true", "isShrinkResources = false")
+          path.write_text(source)
+          print("Disabled release minification/resource shrinking in the runner workspace only.")
+          PY
+
       - name: Build release APK
         run: flutter build apk --release
 
