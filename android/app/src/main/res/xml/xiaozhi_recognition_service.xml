@@ -1,2 +1,3 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Required metadata for Android voice assistant discovery. -->
 <recognition-service xmlns:android="http://schemas.android.com/apk/res/android" />
