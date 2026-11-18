@@ -28,7 +28,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
   late XiaozhiService _xiaozhiService;
   bool _isConnected = false;
   bool _isSpeaking = false;
-  String _statusText = '正在连接...';
+  String _statusText = 'Подключение...';
   Timer? _callTimer;
   Duration _callDuration = Duration.zero;
   bool _serverReady = false;
@@ -126,7 +126,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
 
   void _connectToVoiceService() async {
     setState(() {
-      _statusText = '正在准备...';
+      _statusText = 'Подготовка...';
     });
 
     try {
@@ -134,14 +134,14 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
       await _xiaozhiService.switchToVoiceCallMode();
 
       setState(() {
-        _statusText = '已连接';
+        _statusText = 'Подключено';
         _isConnected = true;
       });
 
       // 显示连接成功的提示
       if (mounted) {
         _showCustomSnackbar(
-          message: '已进入语音通话模式',
+          message: 'Голосовой режим включён',
           icon: Icons.check_circle,
           iconColor: Colors.greenAccent,
         );
@@ -153,21 +153,21 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
       Provider.of<ConversationProvider>(context, listen: false).addMessage(
         conversationId: widget.conversation.id,
         role: MessageRole.assistant,
-        content: '语音通话已开始',
+        content: 'Голосовой разговор начат',
       );
 
       // 直接开始录音
       _startSpeaking();
     } catch (e) {
       setState(() {
-        _statusText = '准备失败';
+        _statusText = 'Не удалось подготовиться';
         _isConnected = false;
       });
       print('准备失败: $e');
 
       if (mounted) {
         _showCustomSnackbar(
-          message: '进入语音通话模式失败: $e',
+          message: 'Не удалось включить голосовой режим: $e',
           icon: Icons.error_outline,
           iconColor: Colors.redAccent,
         );
@@ -220,14 +220,14 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
             .then((_) {
               if (mounted) {
                 _showCustomSnackbar(
-                  message: '正在录音...',
+                  message: 'Идёт запись...',
                   icon: Icons.mic,
                   iconColor: Colors.greenAccent,
                 );
               }
             })
             .catchError((e) {
-              print('开始录音失败: $e');
+              print('Не удалось начать запись: $e');
               // 如果失败，恢复状态
               if (mounted) {
                 setState(() {
@@ -235,14 +235,14 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
                 });
 
                 _showCustomSnackbar(
-                  message: '开始录音失败: $e',
+                  message: 'Не удалось начать запись: $e',
                   icon: Icons.error,
                   iconColor: Colors.redAccent,
                 );
               }
             });
       } catch (e) {
-        print('开始录音失败: $e');
+        print('Не удалось начать запись: $e');
         // 如果失败，恢复状态
         setState(() {
           _isSpeaking = false;
@@ -250,7 +250,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
 
         if (mounted) {
           _showCustomSnackbar(
-            message: '开始录音失败: $e',
+            message: 'Не удалось начать запись: $e',
             icon: Icons.error,
             iconColor: Colors.redAccent,
           );
@@ -266,7 +266,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
 
     if (mounted) {
       _showCustomSnackbar(
-        message: '已发送打断信号',
+        message: 'Команда прерывания отправлена',
         icon: Icons.pan_tool,
         iconColor: Colors.orangeAccent,
       );
@@ -437,7 +437,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _isSpeaking ? '$_statusText (正在录音)' : _statusText,
+                        _isSpeaking ? '$_statusText (идёт запись)' : _statusText,
                         style: TextStyle(
                           color: _isConnected ? Colors.green : Colors.red,
                           fontSize: 16,
@@ -451,7 +451,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
 
                 // 通话时长
                 Text(
-                  '通话时长: ${_formatDuration(_callDuration)}',
+                  'Длительность разговора: ${_formatDuration(_callDuration)}',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.8),
                     fontSize: 16,
