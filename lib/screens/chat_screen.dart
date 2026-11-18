@@ -252,7 +252,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (difyConfig == null) {
       if (configProvider.difyConfigs.isEmpty) {
-        throw Exception("未设置Dify配置，请先在设置中配置Dify API");
+        throw Exception("Dify API не настроен. Сначала добавьте конфигурацию в настройках.");
       }
       difyConfig = configProvider.difyConfigs.first;
     }
@@ -292,7 +292,7 @@ class _ChatScreenState extends State<ChatScreen> {
           if (widget.conversation.type == ConversationType.dify)
             IconButton(
               icon: const Icon(Icons.refresh, color: Colors.black, size: 24),
-              tooltip: '开始新对话',
+              tooltip: 'Начать новый диалог',
               onPressed: _resetConversation,
             ),
           if (widget.conversation.type == ConversationType.xiaozhi)
@@ -392,7 +392,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             ],
                           ),
                           child: const Text(
-                            '语音',
+                            'Голос',
                             style: TextStyle(color: Colors.grey, fontSize: 12),
                           ),
                         ),
@@ -504,7 +504,7 @@ class _ChatScreenState extends State<ChatScreen> {
       orElse:
           () => XiaozhiConfig(
             id: '',
-            name: '未知服务',
+            name: 'Неизвестный сервис',
             websocketUrl: '',
             macAddress: '',
             token: '',
@@ -550,7 +550,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           const SizedBox(width: 8),
           Text(
-            isConnected ? '已连接' : '未连接',
+            isConnected ? 'Подключено' : 'Не подключено',
             style: TextStyle(
               fontSize: 13,
               color: isConnected ? Colors.green : Colors.red,
@@ -630,7 +630,7 @@ class _ChatScreenState extends State<ChatScreen> {
         if (messages.isEmpty) {
           return Center(
             child: Text(
-              '开始新对话',
+              'Начать новый диалог',
               style: TextStyle(color: Colors.grey.shade400, fontSize: 16),
             ),
           );
@@ -652,7 +652,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   id: 'loading',
                   conversationId: '',
                   role: MessageRole.assistant,
-                  content: '思考中...',
+                  content: 'Думаю...',
                   timestamp: DateTime.now(),
                 ),
                 isThinking: true,
@@ -740,7 +740,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: TextField(
                     controller: _textController,
                     decoration: const InputDecoration(
-                      hintText: '输入消息...',
+                      hintText: 'Введите сообщение...',
                       hintStyle: TextStyle(
                         color: Color(0xFF9CA3AF),
                         fontSize: 16,
@@ -904,9 +904,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: Text(
                         _isRecording
                             ? _isCancelling
-                                ? "松开手指，取消发送"
-                                : "松开发送，上滑取消"
-                            : "按住说话",
+                                ? "Отпустите, чтобы отменить"
+                                : "Отпустите для отправки, проведите вверх для отмены"
+                            : "Удерживайте для записи",
                         style: TextStyle(
                           color:
                               _isRecording
@@ -1001,7 +1001,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _startRecording() async {
     if (widget.conversation.type != ConversationType.xiaozhi ||
         _xiaozhiService == null) {
-      _showCustomSnackbar('语音功能仅适用于小智对话');
+      _showCustomSnackbar('Голосовой ввод доступен только в диалогах Xiaozhi');
       setState(() {
         _isVoiceInputMode = false;
       });
@@ -1016,7 +1016,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _xiaozhiService!.startListening();
     } catch (e) {
       print('开始录音失败: $e');
-      _showCustomSnackbar('无法开始录音: ${e.toString()}');
+      _showCustomSnackbar('Не удалось начать запись: ${e.toString()}');
       setState(() {
         _isRecording = false;
         _isVoiceInputMode = false;
@@ -1043,7 +1043,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _scrollToBottom();
     } catch (e) {
       print('停止录音失败: $e');
-      _showCustomSnackbar('语音发送失败: ${e.toString()}');
+      _showCustomSnackbar('Не удалось отправить аудио: ${e.toString()}');
 
       // 出错时关闭语音输入模式
       setState(() {
@@ -1070,7 +1070,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await _xiaozhiService?.abortListening();
 
       // 使用自定义的拟物化提示，显示在顶部且带有圆角
-      _showCustomSnackbar('已取消发送');
+      _showCustomSnackbar('Отправка отменена');
     } catch (e) {
       print('取消录音失败: $e');
     }
@@ -1105,7 +1105,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _resetConversation() async {
     // 给用户一个清晰的提示
-    _showCustomSnackbar('正在开始新对话...');
+    _showCustomSnackbar('Начинаем новый диалог...');
 
     final conversationProvider = Provider.of<ConversationProvider>(
       context,
@@ -1123,12 +1123,12 @@ class _ChatScreenState extends State<ChatScreen> {
       await conversationProvider.addMessage(
         conversationId: widget.conversation.id,
         role: MessageRole.system,
-        content: '--- 开始新对话 ---',
+        content: '--- Новый диалог ---',
       );
 
-      _showCustomSnackbar('已开始新对话');
+      _showCustomSnackbar('Новый диалог начат');
     } else {
-      _showCustomSnackbar('Dify配置未设置，无法重置对话');
+      _showCustomSnackbar('Не настроен Dify API. Невозможно начать диалог заново.');
     }
   }
 
@@ -1165,7 +1165,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
 
         if (_difyService == null) {
-          throw Exception("未设置Dify配置，请先在设置中配置Dify API");
+          throw Exception("Dify API не настроен. Сначала добавьте конфигурацию в настройках.");
         }
 
         // 使用会话的ID作为sessionId，使每次请求保持相同的对话上下文
@@ -1198,7 +1198,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
           // 如果重连失败，提示用户
           if (!_xiaozhiService!.isConnected) {
-            throw Exception("无法连接到小智服务，请检查网络或服务配置");
+            throw Exception("Не удалось подключиться к Xiaozhi. Проверьте интернет и настройки сервиса.");
           }
 
           // 刷新UI显示连接状态
@@ -1217,7 +1217,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await conversationProvider.addMessage(
         conversationId: widget.conversation.id,
         role: MessageRole.assistant,
-        content: '发生错误: ${e.toString()}',
+        content: 'Произошла ошибка: ${e.toString()}',
       );
     } finally {
       if (!mounted) return;
@@ -1399,7 +1399,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                       title: const Text(
-                        '从相册选择',
+                        'Выбрать из галереи',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -1407,7 +1407,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                       subtitle: Text(
-                        '选择已有照片',
+                        'Выбрать фотографию',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade600,
@@ -1472,7 +1472,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                       title: const Text(
-                        '拍照',
+                        'Сделать фото',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -1480,7 +1480,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                       ),
                       subtitle: Text(
-                        '拍摄新照片',
+                        'Снять новое фото',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey.shade600,
@@ -1507,7 +1507,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _pickImage(bool fromGallery) async {
     if (widget.conversation.type != ConversationType.dify) {
-      _showCustomSnackbar('图片上传功能仅适用于Dify对话');
+      _showCustomSnackbar('Загрузка изображений доступна только в диалогах Dify');
       return;
     }
 
@@ -1521,7 +1521,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
 
       if (_difyService == null) {
-        throw Exception("未设置Dify配置，请先在设置中配置Dify API");
+        throw Exception("Dify API не настроен. Сначала добавьте конфигурацию в настройках.");
       }
 
       final ImagePicker picker = ImagePicker();
@@ -1532,7 +1532,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       if (pickedFile == null) {
-        _showCustomSnackbar('已取消选择');
+        _showCustomSnackbar('Выбор отменён');
         setState(() {
           _isLoading = false;
         });
@@ -1570,7 +1570,7 @@ class _ChatScreenState extends State<ChatScreen> {
       await conversationProvider.addMessage(
         conversationId: widget.conversation.id,
         role: MessageRole.user,
-        content: "[图片上传中...]",
+        content: "[Загрузка изображения...]",
         isImage: true,
         imageLocalPath: localPath,
       );
@@ -1593,7 +1593,7 @@ class _ChatScreenState extends State<ChatScreen> {
           imageLocalPath: localPath,
         );
 
-        final textPrompt = "分析这张图片";
+        final textPrompt = "Проанализируй это изображение";
         final chatResponse = await _difyService!.sendMessage(
           textPrompt,
           sessionId: sessionId,
@@ -1609,7 +1609,7 @@ class _ChatScreenState extends State<ChatScreen> {
         throw Exception("上传成功但服务器未返回文件ID: $response");
       }
 
-      _showCustomSnackbar('图片上传成功');
+      _showCustomSnackbar('Изображение загружено');
     } catch (e) {
       print('图片上传失败: $e');
 
@@ -1620,10 +1620,10 @@ class _ChatScreenState extends State<ChatScreen> {
       await conversationProvider.addMessage(
         conversationId: widget.conversation.id,
         role: MessageRole.assistant,
-        content: '图片上传失败: ${e.toString()}',
+        content: 'Не удалось загрузить изображение: ${e.toString()}',
       );
 
-      _showCustomSnackbar('图片上传失败: ${e.toString()}');
+      _showCustomSnackbar('Не удалось загрузить изображение: ${e.toString()}');
     } finally {
       setState(() {
         _isLoading = false;
