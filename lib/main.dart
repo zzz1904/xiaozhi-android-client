@@ -17,6 +17,7 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:ai_assistant/utils/audio_util.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // 是否启用调试工具
 const bool enableDebugTools = true;
@@ -115,16 +116,16 @@ void main() async {
 // 设置系统UI沉浸式效果
 Future<void> _setupSystemUI() async {
   // 设置状态栏和导航栏透明
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.dark,
-      statusBarBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.dark,
-      systemNavigationBarDividerColor: Colors.transparent,
-    ),
-  );
+  final prefs = await SharedPreferences.getInstance();
+  final dark = prefs.getBool('isDarkMode') ?? false;
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+    systemNavigationBarColor: dark ? const Color(0xFF121212) : const Color(0xFFF7F8FA),
+    systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+    systemNavigationBarDividerColor: Colors.transparent,
+  ));
 
   if (Platform.isAndroid) {
     // 启用边缘到边缘显示模式，实现真正的全面屏效果

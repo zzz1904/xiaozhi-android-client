@@ -42,7 +42,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     _configProvider = configProvider;
 
     // 初始化选项卡控制器
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) {
         setState(() {
@@ -78,19 +78,20 @@ class _SettingsScreenState extends State<SettingsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
         elevation: 1,
         toolbarHeight: 70,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 26),
+          icon: const Icon(Icons.arrow_back, size: 26),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'Настройки',
           style: TextStyle(
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.bold,
             fontSize: 24,
           ),
@@ -104,7 +105,6 @@ class _SettingsScreenState extends State<SettingsScreen>
               controller: _tabController,
               children: [
                 _buildGeneralTab(),
-                _buildDifyConfigTab(),
                 _buildXiaozhiConfigTab(),
               ],
             ),
@@ -116,12 +116,12 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Widget _buildTabBar() {
     return Container(
-      color: const Color(0xFFF8F9FA),
+      color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Container(
         height: 46,
         decoration: BoxDecoration(
-          color: const Color(0xFFE8E8E8),
+          color: Theme.of(context).colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
@@ -135,7 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         child: TabBar(
           controller: _tabController,
           indicator: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
@@ -152,8 +152,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           labelPadding: EdgeInsets.zero,
           padding: EdgeInsets.zero,
           indicatorSize: TabBarIndicatorSize.tab,
-          labelColor: Colors.black,
-          unselectedLabelColor: Colors.grey.shade700,
+          labelColor: Theme.of(context).colorScheme.onSurface,
+          unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
           dividerColor: Colors.transparent,
           overlayColor: MaterialStateProperty.all(Colors.transparent),
           splashFactory: NoSplash.splashFactory,
@@ -165,7 +165,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             fontWeight: FontWeight.w500,
             fontSize: 14,
           ),
-          tabs: const [Tab(text: 'Общие'), Tab(text: 'Настройки Dify'), Tab(text: 'Сервис Xiaozhi')],
+          tabs: const [Tab(text: 'Общие'), Tab(text: 'Сервис XiaoZhi')],
         ),
       ),
     );
@@ -200,7 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   height: 24,
                                   child: const Icon(
                                     Icons.dark_mode,
-                                    color: Colors.black,
+                                    color: Theme.of(context).colorScheme.onSurface,
                                     size: 22,
                                   ),
                                 ),
@@ -219,7 +219,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                               onChanged: (value) {
                                 themeProvider.toggleTheme();
                               },
-                              activeColor: Colors.black,
+                              activeColor: Theme.of(context).colorScheme.primary,
                               inactiveTrackColor: const Color(0xFFE0E0E0),
                             ),
                           ],

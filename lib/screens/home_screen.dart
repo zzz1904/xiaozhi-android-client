@@ -8,7 +8,6 @@ import 'package:ai_assistant/screens/settings_screen.dart';
 import 'package:ai_assistant/screens/conversation_type_screen.dart';
 import 'package:ai_assistant/widgets/conversation_tile.dart';
 import 'package:ai_assistant/widgets/slidable_delete_tile.dart';
-import 'package:ai_assistant/widgets/discovery_screen.dart';
 import 'package:flutter/rendering.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -40,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Scaffold(
         extendBody: true,
         extendBodyBehindAppBar: true,
-        backgroundColor: const Color(0xFFF8F9FA),
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar:
             _selectedIndex == 1
                 ? null
@@ -55,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   elevation: 0,
                   scrolledUnderElevation: 0,
-                  backgroundColor: const Color(0xFFF8F9FA),
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                   centerTitle: false,
                   titleSpacing: 20,
                   toolbarHeight: 65,
@@ -97,18 +96,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-        body:
-            _selectedIndex == 1
-                ? const SafeArea(bottom: false, child: DiscoveryScreen())
-                : SafeArea(
-                  bottom: false,
-                  child: Column(
-                    children: [
-                      _buildSearchBar(),
-                      Expanded(child: _buildBody()),
-                    ],
-                  ),
-                ),
+        body: SafeArea(
+          bottom: false,
+          child: Column(
+            children: [
+              _buildSearchBar(),
+              Expanded(child: _buildBody()),
+            ],
+          ),
+        ),
         floatingActionButton:
             _selectedIndex == 0
                 ? Container(
@@ -145,135 +141,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 )
                 : null,
-        bottomNavigationBar: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-          child: Theme(
-            data: ThemeData(
-              splashColor: Colors.transparent,
-              highlightColor: Colors.transparent,
-            ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 10,
-                    spreadRadius: 0,
-                    offset: const Offset(0, -3),
-                  ),
-                ],
-              ),
-              child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).padding.bottom / 2,
-                ),
-                child: BottomNavigationBar(
-                  currentIndex: _selectedIndex,
-                  onTap: (index) {
-                    setState(() {
-                      _selectedIndex = index;
-                    });
-                  },
-                  selectedItemColor: Colors.black,
-                  unselectedItemColor: Colors.grey.shade600,
-                  showSelectedLabels: true,
-                  showUnselectedLabels: true,
-                  backgroundColor: Colors.white,
-                  elevation: 0,
-                  type: BottomNavigationBarType.fixed,
-                  selectedLabelStyle: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                  unselectedLabelStyle: const TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12,
-                  ),
-                  iconSize: 26,
-                  items: [
-                    BottomNavigationBarItem(
-                      icon: Material(
-                        color: Colors.transparent,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color:
-                                _selectedIndex == 0
-                                    ? Colors.grey.shade100
-                                    : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow:
-                                _selectedIndex == 0
-                                    ? [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 4,
-                                        spreadRadius: 0,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                    : null,
-                          ),
-                          child: Icon(
-                            _selectedIndex == 0
-                                ? Icons.chat_bubble
-                                : Icons.chat_bubble_outline,
-                          ),
-                        ),
-                      ),
-                      label: 'Диалоги',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Material(
-                        color: Colors.transparent,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color:
-                                _selectedIndex == 1
-                                    ? Colors.grey.shade100
-                                    : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow:
-                                _selectedIndex == 1
-                                    ? [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.05),
-                                        blurRadius: 4,
-                                        spreadRadius: 0,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ]
-                                    : null,
-                          ),
-                          child: Icon(
-                            _selectedIndex == 1
-                                ? Icons.search
-                                : Icons.search_outlined,
-                          ),
-                        ),
-                      ),
-                      label: 'Обзор',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
+        bottomNavigationBar: null,
       ),
     );
   }
 
   Widget _buildSearchBar() {
-    if (_selectedIndex == 1) {
-      return const SizedBox.shrink();
-    }
-
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       decoration: BoxDecoration(
