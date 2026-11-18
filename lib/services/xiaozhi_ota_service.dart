@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 class XiaozhiOtaService {
   static const String otaUrl = 'https://api.tenclass.net/xiaozhi/ota/';
 
+  // The Android client has no provisioned eFuse serial/HMAC key, so it uses activation v1.
   Map<String, String> _headers({
     required String deviceId,
     required String clientId,
