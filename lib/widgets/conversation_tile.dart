@@ -126,7 +126,7 @@ class ConversationTile extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    final isArchived = conversation.type == ConversationType.dify;
+    final isArchived = conversation.type == ConversationType.legacy;
     return CircleAvatar(
       radius: 24,
       backgroundColor: isArchived ? Colors.grey.shade400 : Colors.purple.shade400,
