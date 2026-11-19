@@ -1104,11 +1104,11 @@ void _sendMessage() async {
             e,
             stackTrace: stackTrace,
           ) ??
-          'Диагностика XiaoZhi\\nОшибка: $e\\nВремя: ${DateTime.now().toIso8601String()}\\nСервис XiaoZhi не был инициализирован.';
+          'Диагностика XiaoZhi\nОшибка: $e\nВремя: ${DateTime.now().toIso8601String()}\nСервис XiaoZhi не был инициализирован.';
       await conversationProvider.addMessage(
         conversationId: widget.conversation.id,
         role: MessageRole.assistant,
-        content: 'Произошла ошибка:\\n$e\\n\\nТехническая информация:\\n$diagnostics',
+        content: 'Произошла ошибка:\n$e\n\nТехническая информация:\n$diagnostics',
       );
     } finally {
       if (!mounted) return;
