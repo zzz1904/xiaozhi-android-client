@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math' as math;
 import 'dart:math';
 import 'package:provider/provider.dart';
 import 'package:ai_assistant/models/conversation.dart';
@@ -11,7 +10,6 @@ import 'package:ai_assistant/providers/config_provider.dart';
 import 'package:ai_assistant/services/xiaozhi_service.dart';
 import 'package:ai_assistant/widgets/message_bubble.dart';
 import 'package:ai_assistant/screens/voice_call_screen.dart';
-import 'dart:convert';
 import 'dart:async';
 
 class ChatScreen extends StatefulWidget {
