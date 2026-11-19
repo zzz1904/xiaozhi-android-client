@@ -36,7 +36,7 @@ class AudioUtil {
   static Future<void> _playbackQueue = Future<void>.value();
   // Небольшой стартовый буфер сглаживает короткие сетевые задержки.
   static final List<Uint8List> _startupPlaybackBuffer = [];
-  static const int _playbackPrebufferFrames = 3;
+  static const int _playbackPrebufferFrames = 8;
   static bool _playbackStarted = false;
   // Оценка момента, когда последний переданный PCM-фрагмент прозвучит.
   static DateTime? _estimatedPlaybackEnd;
