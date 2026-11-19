@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_assistant/providers/config_provider.dart';
 import 'package:ai_assistant/models/xiaozhi_config.dart';
@@ -15,6 +16,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  late final Future<PackageInfo> _packageInfo = PackageInfo.fromPlatform();
 
   @override
   Widget build(BuildContext context) {
@@ -56,17 +58,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildXiaozhiConfigTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton.icon(
-          onPressed: _connectOfficialXiaozhi,
-          icon: const Icon(Icons.link, color: Colors.white),
-          label: const Text('Подключить к консоли XiaoZhi'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF222222),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ElevatedButton.icon(
+            onPressed: _connectOfficialXiaozhi,
+            icon: const Icon(Icons.link, color: Colors.white),
+            label: const Text('Подключить к консоли XiaoZhi'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF222222),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            ),
           ),
+          const SizedBox(height: 20),
+          _buildAppVersionCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppVersionCard() {
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Theme.of(context).dividerColor),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: FutureBuilder<PackageInfo>(
+          future: _packageInfo,
+          builder: (context, snapshot) {
+            final info = snapshot.data;
+            final version = info == null
+                ? 'Загрузка…'
+                : '${info.version} (сборка ${info.buildNumber})';
+            return Row(
+              children: [
+                Icon(Icons.info_outline, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Версия приложения',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        snapshot.hasError ? 'Не удалось определить версию' : version,
+                        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
