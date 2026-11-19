@@ -60,6 +60,7 @@ class XiaozhiService {
   bool _hasStartedCall = false;
   MessageListener? _messageListener;
   Completer<void>? _helloCompleter;
+  Completer<void>? _pendingSpeechResponse;
   bool _assistantAutoListenAfterTts = false;
   bool _assistantPausedForTts = false;
   Future<void> _assistantAudioTransition = Future<void>.value();
@@ -314,6 +315,7 @@ class XiaozhiService {
   /// Подключается и дожидается подтверждения hello от сервера.
   /// Это гарантирует, что серверная session_id получена до отправки аудио.
   Future<void> connectAndWaitForHello() async {
+    if (_isConnected && _sessionId != null) return;
     final completer = Completer<void>();
     _helloCompleter = completer;
     await connect();
@@ -349,71 +351,77 @@ class XiaozhiService {
     }
   }
 
-  /// 发送文本消息
-  Future<String> sendTextMessage(String message) async {
-    if (!_isConnected && _webSocketManager == null) {
-      await connect();
+  /// Отправляет введённый текст как синтезированную голосовую реплику.
+  /// Сервер получает обычный поток Opus, распознаёт его и отвечает голосом.
+  Future<void> sendTextAsSpeech(String message) async {
+    if (message.trim().isEmpty) return;
+
+    if (!_isConnected || _webSocketManager == null || _sessionId == null) {
+      await connectAndWaitForHello();
+    }
+    if (!_isConnected || _webSocketManager == null || _sessionId == null) {
+      throw Exception('Не удалось получить активную сессию XiaoZhi.');
     }
 
+    // Перед текстовой отправкой прекращаем возможную фоновую запись микрофона.
+    setAssistantAutoListenAfterTts(false);
+    await _audioStreamSubscription?.cancel();
+    _audioStreamSubscription = null;
+    if (AudioUtil.isRecording) {
+      await AudioUtil.stopRecording();
+    }
+
+    _lastTextRequestAt = DateTime.now();
+    _recordDiagnostic('Текст преобразуется в голос; длина: ${message.length} символов');
+    final frames = await AudioUtil.synthesizeTextToOpus(message);
+    _recordDiagnostic('Android TTS готов; Opus-кадров: ${frames.length}');
+
+    final responseCompleter = Completer<void>();
+    _pendingSpeechResponse = responseCompleter;
+    // Подписываемся на ошибку сразу, чтобы ALERT во время отправки не стал
+    // необработанным исключением до начала ожидания ответа.
+    final responseFuture = responseCompleter.future.then<void>(
+      (_) {},
+      onError: (Object error) => throw error,
+    );
+
     try {
-      // 创建一个Completer来等待响应
-      final completer = Completer<String>();
-      _lastTextRequestAt = DateTime.now();
-      _recordDiagnostic('Текстовый запрос начат; длина текста: ${message.length} символов');
+      _webSocketManager!.sendMessage(jsonEncode({
+        'type': 'listen',
+        'session_id': _sessionId,
+        'state': 'start',
+        'mode': 'manual',
+      }));
+      await Future.delayed(const Duration(milliseconds: 120));
 
-      // 添加消息监听器，监听所有可能的回复
-      void onceListener(XiaozhiServiceEvent event) {
-        if (event.type == XiaozhiServiceEventType.textMessage) {
-          // 忽略echo消息（即我们发送的消息）
-          if (event.data == message) {
-            print('$TAG: 忽略echo消息: ${event.data}');
-            return;
-          }
-
-          final elapsed = _lastTextRequestAt == null ? null : DateTime.now().difference(_lastTextRequestAt!).inMilliseconds;
-          _recordDiagnostic('Получен текстовый ответ; длина: ${(event.data as String).length} символов; время от запроса: ${elapsed == null ? "неизвестно" : "$elapsed мс"}');
-          if (!completer.isCompleted) {
-            completer.complete(event.data as String);
-            removeListener(onceListener);
-          }
-        } else if (event.type == XiaozhiServiceEventType.error &&
-            !completer.isCompleted) {
-          print('$TAG: 收到错误响应: ${event.data}');
-          completer.completeError(event.data.toString());
-          removeListener(onceListener);
+      for (var i = 0; i < frames.length; i++) {
+        if (!_isConnected || _webSocketManager == null) {
+          throw Exception('Соединение XiaoZhi оборвалось во время отправки аудио.');
+        }
+        _webSocketManager!.sendBinaryMessage(frames[i]);
+        if (i + 1 < frames.length) {
+          // Передаём кадры с тем же темпом, с которым звучит речь (60 мс).
+          await Future.delayed(const Duration(milliseconds: 60));
         }
       }
 
-      // 先添加监听器，确保不会错过任何消息
-      addListener(onceListener);
+      _webSocketManager!.sendMessage(jsonEncode({
+        'type': 'listen',
+        'session_id': _sessionId,
+        'state': 'stop',
+        'mode': 'manual',
+      }));
+      _recordDiagnostic('Голосовая реплика отправлена; ожидается ответ сервера');
 
-      // 发送文本请求
-      _recordDiagnostic('Вызвана отправка текстового запроса');
-      _webSocketManager!.sendTextRequest(message);
-
-      // Ограничиваем ожидание ответа 15 секундами.
-      final timeoutTimer = Timer(const Duration(seconds: 15), () {
-        if (!completer.isCompleted) {
-          _recordDiagnostic('Тайм-аут: ответ не получен за 15 секунд');
-          completer.completeError('Время ожидания ответа истекло');
-          removeListener(onceListener);
-        }
-      });
-
-      // 等待响应
-      try {
-        final result = await completer.future;
-        // 取消超时定时器
-        timeoutTimer.cancel();
-        return result;
-      } catch (e) {
-        // 取消超时定时器
-        timeoutTimer.cancel();
-        rethrow;
+      await responseFuture.timeout(
+        const Duration(seconds: 120),
+        onTimeout: () => throw Exception('XiaoZhi не завершил ответ за 120 секунд.'),
+      );
+      _recordDiagnostic('Ответ XiaoZhi завершён');
+    } finally {
+      if (identical(_pendingSpeechResponse, responseCompleter)) {
+        _pendingSpeechResponse = null;
       }
-    } catch (e) {
-      print('$TAG: 发送消息失败: $e');
-      rethrow;
     }
   }
 
@@ -683,6 +691,9 @@ class XiaozhiService {
         break;
 
       case XiaozhiEventType.disconnected:
+        if (_pendingSpeechResponse != null && !_pendingSpeechResponse!.isCompleted) {
+          _pendingSpeechResponse!.completeError('Соединение XiaoZhi закрыто во время обработки сообщения.');
+        }
         _recordDiagnostic('WebSocket: соединение закрыто сервером или сетью');
         _isConnected = false;
         _dispatchEvent(
@@ -771,6 +782,9 @@ class XiaozhiService {
           final String state = jsonData['state'] ?? '';
           final String text = jsonData['text'] ?? '';
           _handleAssistantTtsState(state);
+          if (state == 'stop' && _pendingSpeechResponse != null && !_pendingSpeechResponse!.isCompleted) {
+            _pendingSpeechResponse!.complete();
+          }
 
           if (state == 'sentence_start' && text.isNotEmpty) {
             print('$TAG: 收到TTS句子: $text');
@@ -812,10 +826,14 @@ class XiaozhiService {
           _recordDiagnostic(
             'Сервер прислал ALERT: ${safeAlert.isEmpty ? "нет стандартных полей; проверьте тип и формат сообщения" : jsonEncode(safeAlert)}',
           );
+          final alertError = safeAlert.isEmpty ? 'Сервер прислал alert без диагностических полей' : jsonEncode(safeAlert);
+          if (_pendingSpeechResponse != null && !_pendingSpeechResponse!.isCompleted) {
+            _pendingSpeechResponse!.completeError(alertError);
+          }
           _dispatchEvent(
             XiaozhiServiceEvent(
               XiaozhiServiceEventType.error,
-              safeAlert.isEmpty ? 'Сервер прислал alert без диагностических полей' : jsonEncode(safeAlert),
+              alertError,
             ),
           );
           break;
