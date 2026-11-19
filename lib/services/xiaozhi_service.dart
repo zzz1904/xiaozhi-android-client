@@ -363,7 +363,8 @@ class XiaozhiService {
             return;
           }
 
-          _recordDiagnostic('Получен текстовый ответ; длина: ${(event.data as String).length} символов');
+          final elapsed = _lastTextRequestAt == null ? null : DateTime.now().difference(_lastTextRequestAt!).inMilliseconds;
+          _recordDiagnostic('Получен текстовый ответ; длина: ${(event.data as String).length} символов; время от запроса: ${elapsed == null ? "неизвестно" : "$elapsed мс"}');
           if (!completer.isCompleted) {
             completer.complete(event.data as String);
             removeListener(onceListener);
@@ -802,7 +803,7 @@ class XiaozhiService {
           // 对于其他类型的消息，直接忽略
           print('$TAG: 收到未知类型消息: $type, 原始数据: $message');
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       _recordDiagnostic('Не удалось разобрать входящее сообщение: $e');
       print('$TAG: 解析消息失败: $e');
     }
