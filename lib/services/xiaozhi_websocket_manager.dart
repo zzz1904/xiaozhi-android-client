@@ -87,13 +87,8 @@ class XiaozhiWebSocketManager {
       // 创建WebSocket连接
       Uri uri = Uri.parse(url);
 
-      print('$TAG: 正在连接 $url');
-      print('$TAG: 设备ID: $_deviceId');
-      print('$TAG: Token启用: $_enableToken');
+      print('$TAG: 正正在连接 WebSocket');
 
-      if (_enableToken) {
-        print('$TAG: 使用Token: $token');
-      }
 
       // 尝试使用headers (这在非Web平台上有效)
       try {
@@ -245,7 +240,7 @@ class XiaozhiWebSocketManager {
         "source": "text",
       };
 
-      print('$TAG: 发送文本请求: ${jsonEncode(jsonMessage)}');
+      print('$TAG: Отправка текстового запроса (текст скрыт)');
       sendMessage(jsonEncode(jsonMessage));
     } catch (e) {
       print('$TAG: 发送文本请求失败: $e');
@@ -256,7 +251,7 @@ class XiaozhiWebSocketManager {
   void _onMessage(dynamic message) {
     if (message is String) {
       // 文本消息
-      print('$TAG: 收到消息: $message');
+      print('$TAG: Получено текстовое WebSocket-сообщение');
       _dispatchEvent(
         XiaozhiEvent(type: XiaozhiEventType.message, data: message),
       );
