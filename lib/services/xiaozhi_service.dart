@@ -717,7 +717,7 @@ class XiaozhiService {
 
   /// 处理文本消息
   void _handleTextMessage(String message) {
-    print('$TAG: 收到文本消息: $message');
+    // Не выводим полный JSON: он может содержать текст пользователя и служебные данные.
     try {
       final Map<String, dynamic> jsonData = json.decode(message);
       final String type = jsonData['type'] ?? '';
@@ -783,6 +783,34 @@ class XiaozhiService {
               XiaozhiServiceEvent(XiaozhiServiceEventType.userMessage, text),
             );
           }
+          break;
+
+        case 'alert':
+          // Сохраняем только диагностические поля alert, не весь пакет.
+          const alertFields = [
+            'state',
+            'code',
+            'message',
+            'detail',
+            'error',
+            'reason',
+            'status',
+          ];
+          final safeAlert = <String, dynamic>{};
+          for (final key in alertFields) {
+            if (jsonData.containsKey(key) && jsonData[key] != null) {
+              safeAlert[key] = jsonData[key];
+            }
+          }
+          _recordDiagnostic(
+            'Сервер прислал ALERT: ${safeAlert.isEmpty ? "нет стандартных полей; проверьте тип и формат сообщения" : jsonEncode(safeAlert)}',
+          );
+          _dispatchEvent(
+            XiaozhiServiceEvent(
+              XiaozhiServiceEventType.error,
+              safeAlert.isEmpty ? 'Сервер прислал alert без диагностических полей' : jsonEncode(safeAlert),
+            ),
+          );
           break;
 
         case 'emotion':
