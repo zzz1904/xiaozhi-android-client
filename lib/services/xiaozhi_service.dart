@@ -360,7 +360,7 @@ class XiaozhiService {
       final timeoutTimer = Timer(const Duration(seconds: 45), () {
         if (!completer.isCompleted) {
           print('$TAG: 请求超时，45秒内没有收到响应');
-          completer.completeError('请求超时');
+          completer.completeError('Время ожидания ответа истекло');
           removeListener(onceListener);
         }
       });
@@ -760,7 +760,7 @@ class XiaozhiService {
             _dispatchEvent(
               XiaozhiServiceEvent(
                 XiaozhiServiceEventType.textMessage,
-                '表情: $emotion',
+                'Эмоция: $emotion',
               ),
             );
           }
