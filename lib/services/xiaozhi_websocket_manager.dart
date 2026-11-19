@@ -224,29 +224,6 @@ class XiaozhiWebSocketManager {
     }
   }
 
-  /// 发送文本请求
-  void sendTextRequest(String text) {
-    if (!isConnected) {
-      print('$TAG: 发送失败，连接未建立');
-      return;
-    }
-
-    try {
-      // 构造消息格式，与Java实现保持一致
-      final jsonMessage = {
-        "type": "listen",
-        "state": "detect",
-        "text": text,
-        "source": "text",
-      };
-
-      print('$TAG: Отправка текстового запроса (текст скрыт)');
-      sendMessage(jsonEncode(jsonMessage));
-    } catch (e) {
-      print('$TAG: 发送文本请求失败: $e');
-    }
-  }
-
   /// 处理收到的消息
   void _onMessage(dynamic message) {
     if (message is String) {
