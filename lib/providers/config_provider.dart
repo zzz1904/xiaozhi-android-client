@@ -6,17 +6,12 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:crypto/crypto.dart';
 import 'package:uuid/uuid.dart';
 import 'package:ai_assistant/models/xiaozhi_config.dart';
-import 'package:ai_assistant/models/dify_config.dart';
 
 class ConfigProvider extends ChangeNotifier {
   List<XiaozhiConfig> _xiaozhiConfigs = [];
-  List<DifyConfig> _difyConfigs = [];
   bool _isLoaded = false;
 
   List<XiaozhiConfig> get xiaozhiConfigs => _xiaozhiConfigs;
-  List<DifyConfig> get difyConfigs => _difyConfigs;
-  DifyConfig? get difyConfig =>
-      _difyConfigs.isNotEmpty ? _difyConfigs.first : null;
   bool get isLoaded => _isLoaded;
 
   ConfigProvider() {
@@ -33,31 +28,6 @@ class ConfigProvider extends ChangeNotifier {
             .map((json) => XiaozhiConfig.fromJson(jsonDecode(json)))
             .toList();
 
-    // 加载多个Dify配置
-    final difyConfigsJson = prefs.getStringList('difyConfigs') ?? [];
-    _difyConfigs =
-        difyConfigsJson
-            .map((json) => DifyConfig.fromJson(jsonDecode(json)))
-            .toList();
-
-    // 向后兼容：加载旧版单个Dify配置
-    final oldDifyConfigJson = prefs.getString('difyConfig');
-    if (oldDifyConfigJson != null && _difyConfigs.isEmpty) {
-      final oldConfig = DifyConfig.fromJson(jsonDecode(oldDifyConfigJson));
-      // 添加ID和名称，转换为新格式
-      final updatedConfig = DifyConfig(
-        id: const Uuid().v4(),
-        name: "Dify по умолчанию",
-        apiUrl: oldConfig.apiUrl,
-        apiKey: oldConfig.apiKey,
-      );
-      _difyConfigs.add(updatedConfig);
-
-      // 保存为新格式并删除旧数据
-      await _saveConfigs();
-      await prefs.remove('difyConfig');
-    }
-
     _isLoaded = true;
     notifyListeners();
   }
@@ -70,10 +40,7 @@ class ConfigProvider extends ChangeNotifier {
         _xiaozhiConfigs.map((config) => jsonEncode(config.toJson())).toList();
     await prefs.setStringList('xiaozhiConfigs', xiaozhiConfigsJson);
 
-    // 保存多个Dify配置
-    final difyConfigsJson =
-        _difyConfigs.map((config) => jsonEncode(config.toJson())).toList();
-    await prefs.setStringList('difyConfigs', difyConfigsJson);
+
   }
 
   Future<Map<String, String>> getXiaozhiIdentity() async {
@@ -144,52 +111,6 @@ class ConfigProvider extends ChangeNotifier {
     _xiaozhiConfigs.removeWhere((config) => config.id == id);
     await _saveConfigs();
     notifyListeners();
-  }
-
-  // 添加Dify配置
-  Future<void> addDifyConfig(String name, String apiKey, String apiUrl) async {
-    final newConfig = DifyConfig(
-      id: const Uuid().v4(),
-      name: name,
-      apiUrl: apiUrl,
-      apiKey: apiKey,
-    );
-
-    _difyConfigs.add(newConfig);
-    await _saveConfigs();
-    notifyListeners();
-  }
-
-  // 更新Dify配置
-  Future<void> updateDifyConfig(DifyConfig updatedConfig) async {
-    final index = _difyConfigs.indexWhere(
-      (config) => config.id == updatedConfig.id,
-    );
-    if (index != -1) {
-      _difyConfigs[index] = updatedConfig;
-      await _saveConfigs();
-      notifyListeners();
-    }
-  }
-
-  // 删除Dify配置
-  Future<void> deleteDifyConfig(String id) async {
-    _difyConfigs.removeWhere((config) => config.id == id);
-    await _saveConfigs();
-    notifyListeners();
-  }
-
-  // 向后兼容的旧方法，设置第一个Dify配置
-  Future<void> setDifyConfig(String apiKey, String apiUrl) async {
-    if (_difyConfigs.isEmpty) {
-      await addDifyConfig("Dify по умолчанию", apiKey, apiUrl);
-    } else {
-      final updated = _difyConfigs.first.copyWith(
-        apiKey: apiKey,
-        apiUrl: apiUrl,
-      );
-      await updateDifyConfig(updated);
-    }
   }
 
   // 简化版的设备ID获取方法，不依赖上下文
