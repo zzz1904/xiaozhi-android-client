@@ -1093,7 +1093,7 @@ void _sendMessage() async {
         }
 
         // 发送消息
-        await _xiaozhiService!.sendTextMessage(message);
+        await _xiaozhiService!.sendTextAsSpeech(message);
       
     } catch (e, stackTrace) {
       print('聊天屏幕: 发送消息错误: $e');
