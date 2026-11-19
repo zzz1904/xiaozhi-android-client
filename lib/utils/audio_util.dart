@@ -37,6 +37,16 @@ class AudioUtil {
   // Небольшой стартовый буфер сглаживает короткие сетевые задержки.
   static final List<Uint8List> _startupPlaybackBuffer = [];
   static const int _playbackPrebufferFrames = 8;
+  static double _microphoneGain = 1.0;
+  static bool _noiseSuppressionEnabled = true;
+
+  static void setMicrophoneGain(double value) {
+    _microphoneGain = value.clamp(0.75, 2.0).toDouble();
+  }
+
+  static void setNoiseSuppression(bool enabled) {
+    _noiseSuppressionEnabled = enabled;
+  }
   static bool _playbackStarted = false;
   // Оценка момента, когда последний переданный PCM-фрагмент прозвучит.
   static DateTime? _estimatedPlaybackEnd;
@@ -306,10 +316,13 @@ class AudioUtil {
       try {
         print('$TAG: 尝试启动流式录音');
         final stream = await _audioRecorder.startStream(
-          const RecordConfig(
+          RecordConfig(
             encoder: AudioEncoder.pcm16bits,
             sampleRate: SAMPLE_RATE,
             numChannels: CHANNELS,
+            autoGain: false,
+            echoCancel: true,
+            noiseSuppress: _noiseSuppressionEnabled,
           ),
         );
 
@@ -486,6 +499,15 @@ class AudioUtil {
           (i) => (pcmData[i * 2]) | (pcmData[i * 2 + 1] << 8),
         ),
       );
+
+      // Программное усиление PCM перед Opus. Ограничиваем значения,
+      // чтобы не допустить цифрового клиппинга при повышенной чувствительности.
+      if (_microphoneGain != 1.0) {
+        for (var i = 0; i < pcmInt16.length; i++) {
+          final amplified = (pcmInt16[i] * _microphoneGain).round();
+          pcmInt16[i] = amplified.clamp(-32768, 32767);
+        }
+      }
 
       // 确保数据长度符合Opus要求（必须是2.5ms、5ms、10ms、20ms、40ms或60ms的采样数）
       final int samplesPerFrame = (SAMPLE_RATE * FRAME_DURATION) ~/ 1000;
