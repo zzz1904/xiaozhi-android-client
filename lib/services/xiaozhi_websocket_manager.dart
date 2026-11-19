@@ -69,7 +69,7 @@ class XiaozhiWebSocketManager {
   Future<void> connect(String url, String token) async {
     if (url.isEmpty) {
       _dispatchEvent(
-        XiaozhiEvent(type: XiaozhiEventType.error, data: "WebSocket地址不能为空"),
+        XiaozhiEvent(type: XiaozhiEventType.error, data: "Адрес WebSocket не указан"),
       );
       return;
     }
@@ -159,7 +159,7 @@ class XiaozhiWebSocketManager {
     } catch (e) {
       print('$TAG: 连接失败: $e');
       _dispatchEvent(
-        XiaozhiEvent(type: XiaozhiEventType.error, data: "创建WebSocket失败: $e"),
+        XiaozhiEvent(type: XiaozhiEventType.error, data: "Не удалось создать WebSocket-соединение: $e"),
       );
     }
   }
