@@ -34,6 +34,15 @@ class AudioUtil {
   static Timer? _audioProcessingTimer;
   // Все входящие аудиофрагменты воспроизводятся строго по очереди.
   static Future<void> _playbackQueue = Future<void>.value();
+  // Небольшой стартовый буфер сглаживает короткие сетевые задержки.
+  static final List<Uint8List> _startupPlaybackBuffer = [];
+  static const int _playbackPrebufferFrames = 3;
+  static bool _playbackStarted = false;
+  // Оценка момента, когда последний переданный PCM-фрагмент прозвучит.
+  static DateTime? _estimatedPlaybackEnd;
+  // Кодирование кадров микрофона выполняется последовательно: Opus encoder
+  // является общим объектом и не должен использоваться конкурентно.
+  static Future<void> _recordingEncodeQueue = Future<void>.value();
 
   // Opus相关
   static final _encoder = SimpleOpusEncoder(
@@ -158,8 +167,8 @@ class AudioUtil {
     }
   }
 
-  /// 播放Opus音频数据。串行处理，避免音频帧重叠或 перестановки.
-  static Future<void> playOpusData(Uint8List opusData) {
+  /// Добавляет Opus-кадр в последовательную очередь воспроизведения.
+  static Future<void> _enqueueOpusForPlayback(Uint8List opusData) {
     final playback = _playbackQueue.then((_) async {
       try {
         if (!_isPlayerInitialized || _pcmPlayer == null) {
@@ -175,6 +184,16 @@ class AudioUtil {
 
         if (_pcmPlayer != null) {
           await _pcmPlayer!.feed(pcmBytes);
+          // feed() передаёт PCM плееру, но не гарантирует, что динамик уже
+          // воспроизвёл весь фрагмент. Учитываем его реальную длительность.
+          final now = DateTime.now();
+          final previousEnd = _estimatedPlaybackEnd;
+          final playbackStart =
+              previousEnd != null && previousEnd.isAfter(now) ? previousEnd : now;
+          final durationUs =
+              (pcmData.length * Duration.microsecondsPerSecond / SAMPLE_RATE).round();
+          _estimatedPlaybackEnd =
+              playbackStart.add(Duration(microseconds: durationUs));
         }
       } catch (e) {
         print('$TAG: 播放失败: $e');
@@ -188,10 +207,52 @@ class AudioUtil {
     return _playbackQueue;
   }
 
-  /// Дожидается передачи всех накопленных фрагментов в PCM-плеер и затухания буфера.
+  /// Сначала накапливает три кадра (около 180 мс), затем начинает воспроизведение.
+  static Future<void> playOpusData(Uint8List opusData) {
+    if (!_playbackStarted) {
+      _startupPlaybackBuffer.add(Uint8List.fromList(opusData));
+      if (_startupPlaybackBuffer.length < _playbackPrebufferFrames) {
+        return Future<void>.value();
+      }
+      _playbackStarted = true;
+      final bufferedFrames = List<Uint8List>.from(_startupPlaybackBuffer);
+      _startupPlaybackBuffer.clear();
+      var result = Future<void>.value();
+      for (final frame in bufferedFrames) {
+        result = result.then((_) => _enqueueOpusForPlayback(frame));
+      }
+      return result;
+    }
+    return _enqueueOpusForPlayback(opusData);
+  }
+
+  /// Дожидается всех кадров, включая короткий ответ короче стартового буфера,
+  /// и фактического окончания их расчётного воспроизведения через динамик.
   static Future<void> waitForPlaybackComplete() async {
-    await _playbackQueue;
-    await Future.delayed(const Duration(milliseconds: 400));
+    if (_startupPlaybackBuffer.isNotEmpty) {
+      _playbackStarted = true;
+      final bufferedFrames = List<Uint8List>.from(_startupPlaybackBuffer);
+      _startupPlaybackBuffer.clear();
+      for (final frame in bufferedFrames) {
+        await _enqueueOpusForPlayback(frame);
+      }
+    }
+
+    while (true) {
+      final pendingQueue = _playbackQueue;
+      await pendingQueue;
+      if (identical(pendingQueue, _playbackQueue)) break;
+    }
+
+    final playbackEnd = _estimatedPlaybackEnd;
+    if (playbackEnd != null) {
+      final remaining = playbackEnd.difference(DateTime.now());
+      if (remaining > Duration.zero) await Future.delayed(remaining);
+      // Небольшой запас на аппаратный вывод последнего буфера.
+      await Future.delayed(const Duration(milliseconds: 150));
+    }
+    _estimatedPlaybackEnd = null;
+    _playbackStarted = false;
   }
 
   /// 停止播放
@@ -206,6 +267,9 @@ class AudioUtil {
       _pcmPlayer = null;
       _isPlayerInitialized = false;
     }
+    _startupPlaybackBuffer.clear();
+    _playbackStarted = false;
+    _estimatedPlaybackEnd = null;
   }
 
   /// 释放资源
@@ -254,14 +318,20 @@ class AudioUtil {
 
         // 直接从流中处理数据
         stream.listen(
-          (data) async {
-            if (data.isNotEmpty && data.length % 2 == 0) {
+          (data) {
+            if (data.isEmpty || data.length % 2 != 0) return;
+            // Не запускаем несколько encodeToOpus одновременно: иначе общий
+            // Opus encoder может обработать соседние PCM-кадры в неверном порядке.
+            _recordingEncodeQueue = _recordingEncodeQueue.then((_) async {
+              if (!_isRecording) return;
               _publishSpeechActivity(data);
               final opusData = await encodeToOpus(data);
-              if (opusData != null) {
+              if (opusData != null && _isRecording) {
                 _audioStreamController.add(opusData);
               }
-            }
+            }).catchError((Object error) {
+              print('$TAG: Ошибка последовательного кодирования микрофона: $error');
+            });
           },
           onError: (error) {
             print('$TAG: 音频流错误: $error');
