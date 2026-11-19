@@ -55,48 +55,41 @@ class MessageBubble extends StatelessWidget {
               crossAxisAlignment:
                   isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding:
-                      message.isImage
-                          ? const EdgeInsets.all(4)
-                          : const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                  decoration: BoxDecoration(
-                    color: isUser ? const Color(0xFF4B5563) : Colors.white,
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        !isUser
+                    onTap: () => _copyContent(context),
+                    child: Container(
+                      padding:
+                          message.isImage
+                              ? const EdgeInsets.all(4)
+                              : const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                      decoration: BoxDecoration(
+                        color: isUser ? const Color(0xFF4B5563) : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: !isUser
                             ? Border.all(color: Colors.grey.shade200)
                             : null,
-                  ),
-                  // 检查是否为图片消息
-                  child:
-                      isThinking
+                      ),
+                      child: isThinking
                           ? _buildThinkingIndicator(context)
                           : message.isImage
-                          ? _buildImageContent(context)
-                          : Text(
-                            message.content,
-                            style: TextStyle(
-                              color: isUser ? Colors.white : Colors.black87,
-                              fontSize: 15,
-                              // 添加高性能的文本渲染选项
-                              height: 1.3,
-                              leadingDistribution: TextLeadingDistribution.even,
-                            ),
-                          ),
-                ),
-                Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: IconButton(
-                    tooltip: 'Скопировать сообщение',
-                    visualDensity: VisualDensity.compact,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 28),
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.copy, size: 15, color: Colors.grey.shade500),
-                    onPressed: () => _copyContent(context),
+                              ? _buildImageContent(context)
+                              : Text(
+                                  message.content,
+                                  style: TextStyle(
+                                    color: isUser ? Colors.white : Colors.black87,
+                                    fontSize: 15,
+                                    height: 1.3,
+                                    leadingDistribution: TextLeadingDistribution.even,
+                                  ),
+                                ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 2),
