@@ -81,7 +81,7 @@ class XiaozhiService {
       'Диагностика XiaoZhi',
       'Ошибка: $error',
       'Время: ${DateTime.now().toIso8601String()}',
-      'WebSocket: ${uri == null ? "некорректный адрес" : "${uri.scheme}://${uri.host}${uri.hasPort ? ":${uri.port}" : ""}"}',
+      'WebSocket: ${uri == null ? "некорректный адрес" : "${uri.scheme}://${uri.host}${uri.hasPort ? ":${uri.port}" : ""}${uri.path}"}',
       'Состояние соединения приложения: $_isConnected',
       'Состояние WebSocket: ${_webSocketManager?.isConnected ?? false}',
       'Session ID получен: ${_sessionId != null}',
