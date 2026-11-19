@@ -65,6 +65,33 @@ class XiaozhiService {
   Future<void> _assistantAudioTransition = Future<void>.value();
   Timer? _assistantSilenceTimer;
   StreamSubscription<bool>? _assistantActivitySubscription;
+  final List<String> _diagnosticEvents = [];
+  DateTime? _lastTextRequestAt;
+
+  void _recordDiagnostic(String event) {
+    final line = '${DateTime.now().toIso8601String()} | $event';
+    _diagnosticEvents.add(line);
+    if (_diagnosticEvents.length > 80) _diagnosticEvents.removeAt(0);
+    print('$TAG: $line');
+  }
+
+  String buildDiagnostics(Object error, {StackTrace? stackTrace}) {
+    final uri = Uri.tryParse(websocketUrl);
+    final lines = <String>[
+      'Диагностика XiaoZhi',
+      'Ошибка: $error',
+      'Время: ${DateTime.now().toIso8601String()}',
+      'WebSocket: ${uri == null ? "некорректный адрес" : "${uri.scheme}://${uri.host}${uri.hasPort ? ":${uri.port}" : ""}"}',
+      'Состояние соединения приложения: $_isConnected',
+      'Состояние WebSocket: ${_webSocketManager?.isConnected ?? false}',
+      'Session ID получен: ${_sessionId != null}',
+      if (_lastTextRequestAt != null) 'Последний текстовый запрос: ${_lastTextRequestAt!.toIso8601String()}',
+      'Последние события:',
+      ..._diagnosticEvents,
+      if (stackTrace != null) 'Стек ошибки:\n$stackTrace',
+    ];
+    return lines.join('\\n');
+  }
 
   /// 工厂构造函数，实现单例模式
   factory XiaozhiService({
@@ -324,7 +351,8 @@ class XiaozhiService {
     try {
       // 创建一个Completer来等待响应
       final completer = Completer<String>();
-      print('$TAG: 开始发送文本消息: $message');
+      _lastTextRequestAt = DateTime.now();
+      _recordDiagnostic('Текстовый запрос начат; длина текста: ${message.length} символов');
 
       // 添加消息监听器，监听所有可能的回复
       void onceListener(XiaozhiServiceEvent event) {
@@ -335,7 +363,7 @@ class XiaozhiService {
             return;
           }
 
-          print('$TAG: 收到服务器响应: ${event.data}');
+          _recordDiagnostic('Получен текстовый ответ; длина: ${(event.data as String).length} символов');
           if (!completer.isCompleted) {
             completer.complete(event.data as String);
             removeListener(onceListener);
@@ -352,13 +380,13 @@ class XiaozhiService {
       addListener(onceListener);
 
       // 发送文本请求
-      print('$TAG: 发送文本请求: $message');
+      _recordDiagnostic('Вызвана отправка текстового запроса');
       _webSocketManager!.sendTextRequest(message);
 
       // Ограничиваем ожидание ответа 15 секундами.
       final timeoutTimer = Timer(const Duration(seconds: 15), () {
         if (!completer.isCompleted) {
-          print('$TAG: 请求超时，15秒内没有收到响应');
+          _recordDiagnostic('Тайм-аут: ответ не получен за 15 секунд');
           completer.completeError('Время ожидания ответа истекло');
           removeListener(onceListener);
         }
@@ -639,6 +667,7 @@ class XiaozhiService {
   void _onWebSocketEvent(XiaozhiEvent event) {
     switch (event.type) {
       case XiaozhiEventType.connected:
+        _recordDiagnostic('WebSocket: создан канал и запущена подписка; подтверждение hello ожидается отдельно');
         _isConnected = true;
         _dispatchEvent(
           XiaozhiServiceEvent(XiaozhiServiceEventType.connected, null),
@@ -646,6 +675,7 @@ class XiaozhiService {
         break;
 
       case XiaozhiEventType.disconnected:
+        _recordDiagnostic('WebSocket: соединение закрыто сервером или сетью');
         _isConnected = false;
         _dispatchEvent(
           XiaozhiServiceEvent(XiaozhiServiceEventType.disconnected, null),
@@ -663,6 +693,7 @@ class XiaozhiService {
         break;
 
       case XiaozhiEventType.error:
+        _recordDiagnostic('WebSocket: ошибка: ${event.data}');
         _dispatchEvent(
           XiaozhiServiceEvent(XiaozhiServiceEventType.error, event.data),
         );
@@ -689,6 +720,8 @@ class XiaozhiService {
     try {
       final Map<String, dynamic> jsonData = json.decode(message);
       final String type = jsonData['type'] ?? '';
+      final String state = jsonData['state']?.toString() ?? '';
+      _recordDiagnostic('Получено WebSocket-сообщение: type=$type${state.isEmpty ? "" : ", state=$state"}');
 
       // 确保首先调用消息监听器
       if (_messageListener != null) {
@@ -769,8 +802,9 @@ class XiaozhiService {
           // 对于其他类型的消息，直接忽略
           print('$TAG: 收到未知类型消息: $type, 原始数据: $message');
       }
-    } catch (e) {
-      print('$TAG: 解析消息失败: $e, 原始消息: $message');
+    } catch (e, stackTrace) {
+      _recordDiagnostic('Не удалось разобрать входящее сообщение: $e');
+      print('$TAG: 解析消息失败: $e');
     }
   }
 
