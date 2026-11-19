@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ai_assistant/providers/config_provider.dart';
 import 'package:ai_assistant/models/xiaozhi_config.dart';
-import 'package:ai_assistant/widgets/settings_section.dart';
 import 'package:ai_assistant/screens/xiaozhi_pairing_screen.dart';
 
 // 引入main.dart中定义的常量
