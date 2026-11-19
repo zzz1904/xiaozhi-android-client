@@ -272,7 +272,7 @@ class XiaozhiService {
     } catch (e) {
       print('$TAG: 连接失败: $e');
       _dispatchEvent(
-        XiaozhiServiceEvent(XiaozhiServiceEventType.error, '连接小智服务失败: $e'),
+        XiaozhiServiceEvent(XiaozhiServiceEventType.error, 'Не удалось подключиться к сервису XiaoZhi: $e'),
       );
     }
   }
@@ -391,7 +391,7 @@ class XiaozhiService {
         if (status != PermissionStatus.granted) {
           print('$TAG: 麦克风权限被拒绝');
           _dispatchEvent(
-            XiaozhiServiceEvent(XiaozhiServiceEventType.error, '麦克风权限被拒绝'),
+            XiaozhiServiceEvent(XiaozhiServiceEventType.error, 'Нет разрешения на использование микрофона'),
           );
           return;
         }
@@ -486,7 +486,7 @@ class XiaozhiService {
     } catch (e) {
       print('$TAG: 发送listen消息失败: $e');
       _dispatchEvent(
-        XiaozhiServiceEvent(XiaozhiServiceEventType.error, '发送listen消息失败: $e'),
+        XiaozhiServiceEvent(XiaozhiServiceEventType.error, 'Не удалось отправить команду прослушивания: $e'),
       );
     }
   }
@@ -505,7 +505,7 @@ class XiaozhiService {
         await Future.delayed(const Duration(milliseconds: 500));
         if (_sessionId == null) {
           print('$TAG: 会话ID仍然为空，放弃开始监听');
-          throw Exception('会话ID为空，无法开始录音');
+          throw Exception('Идентификатор сессии отсутствует. Невозможно начать запись.');
         }
       }
 
@@ -519,7 +519,7 @@ class XiaozhiService {
           if (result != PermissionStatus.granted) {
             print('$TAG: 麦克风权限被拒绝');
             _dispatchEvent(
-              XiaozhiServiceEvent(XiaozhiServiceEventType.error, '麦克风权限被拒绝'),
+              XiaozhiServiceEvent(XiaozhiServiceEventType.error, 'Нет разрешения на использование микрофона'),
             );
             return;
           }
@@ -533,7 +533,7 @@ class XiaozhiService {
         if (status.isDenied) {
           print('$TAG: 麦克风权限被拒绝');
           _dispatchEvent(
-            XiaozhiServiceEvent(XiaozhiServiceEventType.error, '麦克风权限被拒绝'),
+            XiaozhiServiceEvent(XiaozhiServiceEventType.error, 'Нет разрешения на использование микрофона'),
           );
           return;
         }
@@ -566,7 +566,7 @@ class XiaozhiService {
       print('$TAG: 已发送开始监听消息 (语音通话模式)');
     } catch (e) {
       print('$TAG: 开始监听失败: $e');
-      throw Exception('开始语音输入失败: $e');
+      throw Exception('Не удалось начать голосовой ввод: $e');
     }
   }
 
@@ -863,7 +863,7 @@ class XiaozhiService {
       });
     } catch (e) {
       print('$TAG: 开始监听失败: $e');
-      throw Exception('开始语音输入失败: $e');
+      throw Exception('Не удалось начать голосовой ввод: $e');
     }
   }
 
