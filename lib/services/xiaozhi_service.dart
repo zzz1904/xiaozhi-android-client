@@ -355,11 +355,10 @@ class XiaozhiService {
       print('$TAG: 发送文本请求: $message');
       _webSocketManager!.sendTextRequest(message);
 
-      // Ответ модели иногда задерживается из-за сети или нагрузки сервера.
-      // 45 секунд уменьшают число ложных ошибок при медленном ответе.
-      final timeoutTimer = Timer(const Duration(seconds: 45), () {
+      // Ограничиваем ожидание ответа 15 секундами.
+      final timeoutTimer = Timer(const Duration(seconds: 15), () {
         if (!completer.isCompleted) {
-          print('$TAG: 请求超时，45秒内没有收到响应');
+          print('$TAG: 请求超时，15秒内没有收到响应');
           completer.completeError('Время ожидания ответа истекло');
           removeListener(onceListener);
         }
