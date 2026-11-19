@@ -47,7 +47,7 @@ class ConfigProvider extends ChangeNotifier {
       // 添加ID和名称，转换为新格式
       final updatedConfig = DifyConfig(
         id: const Uuid().v4(),
-        name: "默认Dify",
+        name: "Dify по умолчанию",
         apiUrl: oldConfig.apiUrl,
         apiKey: oldConfig.apiKey,
       );
@@ -182,7 +182,7 @@ class ConfigProvider extends ChangeNotifier {
   // 向后兼容的旧方法，设置第一个Dify配置
   Future<void> setDifyConfig(String apiKey, String apiUrl) async {
     if (_difyConfigs.isEmpty) {
-      await addDifyConfig("默认Dify", apiKey, apiUrl);
+      await addDifyConfig("Dify по умолчанию", apiKey, apiUrl);
     } else {
       final updated = _difyConfigs.first.copyWith(
         apiKey: apiKey,
