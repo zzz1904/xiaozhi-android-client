@@ -6,7 +6,6 @@ import 'package:ai_assistant/providers/config_provider.dart';
 import 'package:ai_assistant/providers/conversation_provider.dart';
 import 'package:ai_assistant/screens/home_screen.dart';
 import 'package:ai_assistant/screens/settings_screen.dart';
-import 'package:ai_assistant/screens/test_screen.dart';
 import 'package:ai_assistant/utils/app_theme.dart';
 import 'package:opus_flutter/opus_flutter.dart' as opus_flutter;
 import 'package:opus_dart/opus_dart.dart';
@@ -146,7 +145,6 @@ class MyApp extends StatelessWidget {
       home: const HomeScreen(),
       routes: {
         // 添加测试界面路由
-        '/test': (context) => const TestScreen(),
       },
       // 添加平滑滚动设置
       scrollBehavior: const MaterialScrollBehavior().copyWith(
