@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ai_assistant/utils/audio_util.dart';
 import 'package:ai_assistant/models/conversation.dart';
 import 'package:ai_assistant/models/message.dart';
 import 'package:ai_assistant/models/xiaozhi_config.dart';
@@ -36,6 +38,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Timer? _autoReconnectTimer; // 自动重连定时器
   bool _backgroundCloseStarted = false;
   Future<void>? _serviceShutdownFuture;
+  double _micSensitivity = 1.0;
+  bool _noiseSuppressionEnabled = true;
 
   // 语音输入相关
   bool _isVoiceInputMode = false;
@@ -53,6 +57,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _loadAudioPreferences();
 
     // 设置状态栏为透明并使图标为黑色
     SystemChrome.setSystemUIOverlayStyle(
@@ -589,6 +594,86 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _loadAudioPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _micSensitivity = prefs.getDouble('mic_sensitivity') ?? 1.0;
+      _noiseSuppressionEnabled = prefs.getBool('mic_noise_suppression') ?? true;
+    });
+    AudioUtil.setMicrophoneGain(_micSensitivity);
+    AudioUtil.setNoiseSuppression(_noiseSuppressionEnabled);
+  }
+
+  Future<void> _showAudioSettings() async {
+    double sensitivity = _micSensitivity;
+    bool noiseSuppression = _noiseSuppressionEnabled;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Настройки микрофона',
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Expanded(child: Text('Чувствительность')),
+                    Text('${(sensitivity * 100).round()}%'),
+                  ],
+                ),
+                Slider(
+                  value: sensitivity,
+                  min: 0.75,
+                  max: 2.0,
+                  divisions: 25,
+                  label: '${(sensitivity * 100).round()}%',
+                  onChanged: (value) {
+                    setSheetState(() => sensitivity = value);
+                    AudioUtil.setMicrophoneGain(value);
+                    setState(() => _micSensitivity = value);
+                    SharedPreferences.getInstance().then(
+                      (prefs) => prefs.setDouble('mic_sensitivity', value),
+                    );
+                  },
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Шумоподавление'),
+                  subtitle: const Text('Уменьшает фоновый шум и эхо'),
+                  value: noiseSuppression,
+                  onChanged: (value) {
+                    setSheetState(() => noiseSuppression = value);
+                    AudioUtil.setNoiseSuppression(value);
+                    setState(() => _noiseSuppressionEnabled = value);
+                    SharedPreferences.getInstance().then(
+                      (prefs) => prefs.setBool('mic_noise_suppression', value),
+                    );
+                  },
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Чувствительность меняется сразу. Шумоподавление применяется при следующем включении микрофона.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildAssistantListeningArea() {
     return Container(
       width: double.infinity,
@@ -615,7 +700,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             color: _handsFreeReady ? Colors.green : Colors.grey,
             size: 28,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Чувствительность и шумоподавление',
+            onPressed: _showAudioSettings,
+            icon: const Icon(Icons.tune, color: Color(0xFF6B7280)),
+          ),
+          const SizedBox(width: 4),
           Expanded(
             child: Text(
               _handsFreeReady
