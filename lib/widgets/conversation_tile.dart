@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:timeago/timeago.dart' as timeago;
 import 'package:ai_assistant/models/conversation.dart';
 
 class ConversationTile extends StatelessWidget {
@@ -110,7 +108,7 @@ class ConversationTile extends StatelessWidget {
   }
 
   Widget _buildTypeTag(BuildContext context) {
-    final isArchived = conversation.type == ConversationType.dify;
+    final isArchived = conversation.type == ConversationType.legacy;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
