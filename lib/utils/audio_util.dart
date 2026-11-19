@@ -11,6 +11,7 @@ import 'package:just_audio/just_audio.dart' as ja;
 import 'package:audio_session/audio_session.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_pcm_player/flutter_pcm_player.dart';
+import 'package:flutter/services.dart';
 
 /// 音频工具类，用于处理Opus音频编解码和录制播放
 class AudioUtil {
@@ -318,6 +319,90 @@ class AudioUtil {
     }
     final rms = math.sqrt(sumSquares / sampleCount);
     _speechActivityController.add(rms >= 700 || peak >= 2200);
+  }
+
+  /// Синтезирует русский текст Android TTS и кодирует результат в Opus 16 кГц mono.
+  /// Аудио отправляется на сервер как обычная голосовая реплика, а не как текстовый JSON.
+  static const MethodChannel _ttsChannel = MethodChannel('xiaozhi/tts');
+
+  static Future<List<Uint8List>> synthesizeTextToOpus(String text) async {
+    if (!Platform.isAndroid) {
+      throw Exception('Отправка текста голосом сейчас поддерживается только на Android.');
+    }
+
+    final response = await _ttsChannel.invokeMapMethod<String, dynamic>(
+      'synthesizeText',
+      {'text': text},
+    ).timeout(const Duration(seconds: 60));
+
+    if (response == null) {
+      throw Exception('Android не вернул аудиоданные синтеза речи.');
+    }
+
+    final rawAudio = response['audio'];
+    final Uint8List audio = rawAudio is Uint8List
+        ? rawAudio
+        : Uint8List.fromList(List<int>.from(rawAudio as List));
+    final int sourceRate = (response['sampleRate'] as num?)?.toInt() ?? 0;
+    final int channels = (response['channels'] as num?)?.toInt() ?? 0;
+    final int audioFormat = (response['audioFormat'] as num?)?.toInt() ?? 0;
+
+    // Android ENCODING_PCM_16BIT = 2.
+    if (audioFormat != 2 || sourceRate <= 0 || channels <= 0) {
+      throw Exception(
+        'Неподдерживаемый формат звука Android TTS (format=$audioFormat, rate=$sourceRate, channels=$channels).',
+      );
+    }
+    if (audio.length < 2 * channels) {
+      throw Exception('Android создал слишком короткий аудиофрагмент.');
+    }
+
+    final sourceSampleCount = audio.length ~/ (2 * channels);
+    final source = ByteData.sublistView(audio);
+    final mono = Int16List(sourceSampleCount);
+    for (var i = 0; i < sourceSampleCount; i++) {
+      var sum = 0;
+      for (var channel = 0; channel < channels; channel++) {
+        sum += source.getInt16((i * channels + channel) * 2, Endian.little);
+      }
+      mono[i] = (sum / channels).round().clamp(-32768, 32767);
+    }
+
+    // Линейная передискретизация к частоте, которую объявляет XiaoZhi.
+    final outputCount = (mono.length * SAMPLE_RATE / sourceRate).round();
+    if (outputCount <= 0) {
+      throw Exception('Не удалось преобразовать аудио Android TTS.');
+    }
+    final resampled = Int16List(outputCount);
+    for (var i = 0; i < outputCount; i++) {
+      final position = i * sourceRate / SAMPLE_RATE;
+      final left = position.floor().clamp(0, mono.length - 1);
+      final right = (left + 1).clamp(0, mono.length - 1);
+      final fraction = position - left;
+      final value = mono[left] * (1.0 - fraction) + mono[right] * fraction;
+      resampled[i] = value.round().clamp(-32768, 32767);
+    }
+
+    // Opus принимает кадры фиксированной длительности. Используем 60 мс,
+    // как указано в hello: 16 000 Гц * 0,06 с = 960 отсчётов.
+    const samplesPerFrame = SAMPLE_RATE * FRAME_DURATION ~/ 1000;
+    final encoder = SimpleOpusEncoder(
+      sampleRate: SAMPLE_RATE,
+      channels: CHANNELS,
+      application: Application.voip,
+    );
+    final frames = <Uint8List>[];
+    for (var offset = 0; offset < resampled.length; offset += samplesPerFrame) {
+      final frame = Int16List(samplesPerFrame);
+      final count = math.min(samplesPerFrame, resampled.length - offset);
+      frame.setRange(0, count, resampled, offset);
+      frames.add(Uint8List.fromList(encoder.encode(input: frame)));
+    }
+
+    if (frames.isEmpty) {
+      throw Exception('Не удалось подготовить голосовые аудиокадры.');
+    }
+    return frames;
   }
 
   /// 将PCM数据编码为Opus格式
