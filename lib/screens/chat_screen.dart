@@ -113,6 +113,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         setState(() {
           _isVoiceInputMode = true;
         });
+      }
     });
   }
 
