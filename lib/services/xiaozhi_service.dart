@@ -90,7 +90,7 @@ class XiaozhiService {
       ..._diagnosticEvents,
       if (stackTrace != null) 'Стек ошибки:\n$stackTrace',
     ];
-    return lines.join('\\n');
+    return lines.join('\n');
   }
 
   /// 工厂构造函数，实现单例模式
