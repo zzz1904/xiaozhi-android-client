@@ -151,28 +151,23 @@ class MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          child: InkWell(
             borderRadius: BorderRadius.circular(16),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  message.content,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                ),
+            onTap: () => _copyContent(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(16),
               ),
-              IconButton(
-                tooltip: 'Скопировать сообщение',
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.copy, size: 16),
-                onPressed: () => _copyContent(context),
+              child: Text(
+                message.content,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
-            ],
+            ),
           ),
         ),
       ),
