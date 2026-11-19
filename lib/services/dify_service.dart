@@ -241,7 +241,7 @@ class DifyService {
           await _saveConversationMap(); // 保存更改到本地存储
         }
 
-        return data['answer'] ?? '无回复';
+        return data['answer'] ?? 'Ответ не получен';
       } else {
         // 特殊处理404 Conversation Not Exists错误
         if (response.statusCode == 404 &&
@@ -421,7 +421,7 @@ class DifyService {
       }
     } catch (e) {
       print('DifyService Stream 错误: $e');
-      yield "【服务响应异常】";
+      yield 'Ошибка ответа сервиса';
     }
   }
 
