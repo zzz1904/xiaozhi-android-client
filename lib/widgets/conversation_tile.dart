@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:ai_assistant/models/conversation.dart';
-import 'package:ai_assistant/models/xiaozhi_config.dart';
-import 'package:ai_assistant/models/dify_config.dart';
-import 'package:ai_assistant/providers/config_provider.dart';
 
 class ConversationTile extends StatelessWidget {
   final Conversation conversation;
@@ -113,43 +110,34 @@ class ConversationTile extends StatelessWidget {
   }
 
   Widget _buildTypeTag(BuildContext context) {
-    final bool isDify = conversation.type == ConversationType.dify;
-    final label = isDify ? 'Текст' : 'Голос';
-
+    final isArchived = conversation.type == ConversationType.dify;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: isDify ? Colors.blue.shade50 : Colors.purple.shade50,
+        color: isArchived ? Colors.grey.shade100 : Colors.purple.shade50,
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        label,
+        isArchived ? 'Архив' : 'Голос',
         style: TextStyle(
           fontSize: 11,
-          color: isDify ? Colors.blue.shade600 : Colors.purple.shade600,
+          color: isArchived ? Colors.grey.shade600 : Colors.purple.shade600,
         ),
       ),
     );
   }
 
   Widget _buildAvatar() {
-    if (conversation.type == ConversationType.dify) {
-      return CircleAvatar(
-        radius: 24,
-        backgroundColor: Colors.blue.shade400,
-        child: const Icon(
-          Icons.chat_bubble_outline,
-          color: Colors.white,
-          size: 24,
-        ),
-      );
-    } else {
-      return CircleAvatar(
-        radius: 24,
-        backgroundColor: Colors.purple.shade400,
-        child: const Icon(Icons.mic, color: Colors.white, size: 24),
-      );
-    }
+    final isArchived = conversation.type == ConversationType.dify;
+    return CircleAvatar(
+      radius: 24,
+      backgroundColor: isArchived ? Colors.grey.shade400 : Colors.purple.shade400,
+      child: Icon(
+        isArchived ? Icons.archive_outlined : Icons.mic,
+        color: Colors.white,
+        size: 24,
+      ),
+    );
   }
 
   String _formatTime(DateTime dateTime) {
