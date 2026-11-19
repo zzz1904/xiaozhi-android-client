@@ -2,22 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import 'dart:math';
-import 'dart:io';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:ai_assistant/models/conversation.dart';
 import 'package:ai_assistant/models/message.dart';
 import 'package:ai_assistant/models/xiaozhi_config.dart';
-import 'package:ai_assistant/models/dify_config.dart';
 import 'package:ai_assistant/providers/conversation_provider.dart';
 import 'package:ai_assistant/providers/config_provider.dart';
-import 'package:ai_assistant/services/dify_service.dart';
 import 'package:ai_assistant/services/xiaozhi_service.dart';
 import 'package:ai_assistant/widgets/message_bubble.dart';
 import 'package:ai_assistant/screens/voice_call_screen.dart';
 import 'dart:convert';
 import 'dart:async';
-import 'package:path_provider/path_provider.dart';
 
 class ChatScreen extends StatefulWidget {
   final Conversation conversation;
@@ -39,7 +34,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   bool _isLoading = false;
   bool _handsFreeReady = false;
   XiaozhiService? _xiaozhiService; // 保持XiaozhiService实例
-  DifyService? _difyService; // 保持DifyService实例
   Timer? _connectionCheckTimer; // 添加定时器检查连接状态
   Timer? _autoReconnectTimer; // 自动重连定时器
   bool _backgroundCloseStarted = false;
@@ -119,10 +113,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         setState(() {
           _isVoiceInputMode = true;
         });
-      } else if (widget.conversation.type == ConversationType.dify) {
-        // 初始化 DifyService
-        _initDifyService();
-      }
     });
   }
 
@@ -318,33 +308,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
-  // 初始化 DifyService
-  Future<void> _initDifyService() async {
-    final configProvider = Provider.of<ConfigProvider>(context, listen: false);
-    final String? configId = widget.conversation.configId;
-    DifyConfig? difyConfig;
-
-    if (configId != null && configId.isNotEmpty) {
-      difyConfig =
-          configProvider.difyConfigs
-              .where((config) => config.id == configId)
-              .firstOrNull;
-    }
-
-    if (difyConfig == null) {
-      if (configProvider.difyConfigs.isEmpty) {
-        throw Exception("Dify API не настроен. Сначала добавьте конфигурацию в настройках.");
-      }
-      difyConfig = configProvider.difyConfigs.first;
-    }
-
-    _difyService = await DifyService.create(
-      apiKey: difyConfig.apiKey,
-      apiUrl: difyConfig.apiUrl,
-    );
-  }
-
-  @override
+@override
   Widget build(BuildContext context) {
     // 确保状态栏设置正确
     SystemChrome.setSystemUIOverlayStyle(
@@ -370,12 +334,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           statusBarBrightness: Brightness.light,
         ),
         actions: [
-          if (widget.conversation.type == ConversationType.dify)
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.black, size: 24),
-              tooltip: 'Начать новый диалог',
-              onPressed: _resetConversation,
-            ),
           if (widget.conversation.type == ConversationType.xiaozhi &&
               !widget.assistantMode)
             Container(
@@ -418,162 +376,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             Navigator.of(context).pop();
           },
         ),
-        title:
-            widget.conversation.type == ConversationType.xiaozhi
-                ? Row(
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.3),
-                            blurRadius: 8,
-                            spreadRadius: 0,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Colors.grey.shade700,
-                        child: const Icon(
-                          Icons.mic,
-                          color: Colors.white,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.conversation.title,
-                          style: const TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.03),
-                                blurRadius: 1,
-                                spreadRadius: 0,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: const Text(
-                            'Голос',
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                )
-                : Consumer<ConfigProvider>(
-                  builder: (context, configProvider, child) {
-                    // 查找此会话对应的Dify配置
-                    final String? configId = widget.conversation.configId;
-                    String configName = widget.conversation.title;
-
-                    // 如果配置ID存在，则从中获取名称
-                    if (configId != null && configId.isNotEmpty) {
-                      final difyConfig =
-                          configProvider.difyConfigs
-                              .where((config) => config.id == configId)
-                              .firstOrNull;
-
-                      if (difyConfig != null) {
-                        configName = difyConfig.name;
-                      }
-                    }
-
-                    return Row(
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withOpacity(0.3),
-                                blurRadius: 8,
-                                spreadRadius: 0,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 20,
-                            backgroundColor: Colors.blue.shade400,
-                            child: const Icon(
-                              Icons.chat_bubble_outline,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              configName,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.03),
-                                    blurRadius: 1,
-                                    spreadRadius: 0,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: const Text(
-                                'Текст',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                ),
+        title: Text(widget.conversation.title),
       ),
       body: Column(
         children: [
           if (widget.conversation.type == ConversationType.xiaozhi)
             _buildXiaozhiInfo(),
           Expanded(child: _buildMessageList()),
-          _buildInputArea(),
+          if (widget.conversation.type == ConversationType.xiaozhi)
+            _buildInputArea()
+          else
+            const Padding(
+              padding: EdgeInsets.all(12),
+              child: Text('Сохранённый архивный диалог. Отправка новых сообщений отключена.'),
+            ),
         ],
       ),
     );
@@ -903,19 +719,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     onChanged: (_) => setState(() {}),
                   ),
                 ),
-                if (widget.conversation.type == ConversationType.dify &&
-                    !hasText)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      color: Color(0xFF9CA3AF), // 使用紫色，与小智的麦克风按钮风格一致
-                      size: 24,
-                    ),
-                    onPressed: _showImagePickerOptions,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    constraints: const BoxConstraints(),
-                    splashRadius: 22,
-                  ),
                 _buildSendButton(hasText),
                 if (widget.conversation.type == ConversationType.xiaozhi &&
                     !hasText)
@@ -1245,36 +1048,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     ScaffoldMessenger.of(context).showSnackBar(snackBar);
   }
 
-  void _resetConversation() async {
-    // 给用户一个清晰的提示
-    _showCustomSnackbar('Начинаем новый диалог...');
-
-    final conversationProvider = Provider.of<ConversationProvider>(
-      context,
-      listen: false,
-    );
-
-    if (_difyService != null) {
-      // 使用会话的ID作为sessionId，确保与发送消息时使用相同的标识符
-      final sessionId = widget.conversation.id;
-
-      // 清除当前会话的conversation_id
-      await _difyService!.clearConversation(sessionId);
-
-      // 添加系统消息表明这是一个新对话
-      await conversationProvider.addMessage(
-        conversationId: widget.conversation.id,
-        role: MessageRole.system,
-        content: '--- Новый диалог ---',
-      );
-
-      _showCustomSnackbar('Новый диалог начат');
-    } else {
-      _showCustomSnackbar('Не настроен Dify API. Невозможно начать диалог заново.');
-    }
-  }
-
-  void _sendMessage() async {
+void _sendMessage() async {
     final message = _textController.text.trim();
     if (message.isEmpty || _isLoading) return;
 
@@ -1301,35 +1075,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _scrollToBottom();
 
     try {
-      if (widget.conversation.type == ConversationType.dify) {
-        if (_difyService == null) {
-          await _initDifyService();
-        }
 
-        if (_difyService == null) {
-          throw Exception("Dify API не настроен. Сначала добавьте конфигурацию в настройках.");
-        }
-
-        // 使用会话的ID作为sessionId，使每次请求保持相同的对话上下文
-        final sessionId = widget.conversation.id;
-
-        // 使用阻塞式响应
-        final response = await _difyService!.sendMessage(
-          message,
-          sessionId: sessionId, // 使用一致的会话ID
-          // 永远不要在普通消息中使用forceNewConversation，除非用户明确请求开始新对话
-          forceNewConversation: false,
-        );
-
-        if (!mounted) return; // 再次检查组件是否还在widget树中
-
-        // 添加助手回复
-        await conversationProvider.addMessage(
-          conversationId: widget.conversation.id,
-          role: MessageRole.assistant,
-          content: response,
-        );
-      } else {
         // 确保服务已连接
         if (_xiaozhiService == null) {
           await _initXiaozhiService();
@@ -1349,7 +1095,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
         // 发送消息
         await _xiaozhiService!.sendTextMessage(message);
-      }
+      
     } catch (e) {
       print('聊天屏幕: 发送消息错误: $e');
 
@@ -1460,317 +1206,4 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   // 显示图片选择器选项
-  void _showImagePickerOptions() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      elevation: 20,
-      barrierColor: Colors.black.withOpacity(0.5),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 顶部拖动条
-              Container(
-                width: 36,
-                height: 5,
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 1,
-                      spreadRadius: 0,
-                      offset: const Offset(0, 0.5),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // 从相册选择选项
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 10,
-                        spreadRadius: 0,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 6,
-                      ),
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.blue.withOpacity(0.1),
-                              blurRadius: 4,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.photo_library,
-                          color: Colors.blue.shade600,
-                          size: 24,
-                        ),
-                      ),
-                      title: const Text(
-                        'Выбрать из галереи',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Выбрать фотографию',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _pickImage(true);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-
-              // 拍照选项
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.06),
-                        blurRadius: 10,
-                        spreadRadius: 0,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 6,
-                      ),
-                      leading: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.green.withOpacity(0.1),
-                              blurRadius: 4,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: Colors.green.shade600,
-                          size: 24,
-                        ),
-                      ),
-                      title: const Text(
-                        'Сделать фото',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Снять новое фото',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      onTap: () {
-                        Navigator.of(context).pop();
-                        _pickImage(false);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _pickImage(bool fromGallery) async {
-    if (widget.conversation.type != ConversationType.dify) {
-      _showCustomSnackbar('Загрузка изображений доступна только в диалогах Dify');
-      return;
-    }
-
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-
-      if (_difyService == null) {
-        await _initDifyService();
-      }
-
-      if (_difyService == null) {
-        throw Exception("Dify API не настроен. Сначала добавьте конфигурацию в настройках.");
-      }
-
-      final ImagePicker picker = ImagePicker();
-      final XFile? pickedFile = await picker.pickImage(
-        source: fromGallery ? ImageSource.gallery : ImageSource.camera,
-        imageQuality: 85,
-        maxWidth: 1500,
-      );
-
-      if (pickedFile == null) {
-        _showCustomSnackbar('Выбор отменён');
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // 获取应用的文档目录
-      final appDir = await getApplicationDocumentsDirectory();
-      final conversationDir = Directory(
-        '${appDir.path}/conversations/${widget.conversation.id}/images',
-      );
-      await conversationDir.create(recursive: true);
-
-      // 生成唯一的文件名
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final extension = pickedFile.path.split('.').last;
-      final fileName = 'image_$timestamp.$extension';
-      final localPath = '${conversationDir.path}/$fileName';
-
-      // 复制图片到永久存储
-      final File imageFile = File(pickedFile.path);
-      await imageFile.copy(localPath);
-
-      print('图片已保存到永久存储: $localPath');
-
-      final sessionId = widget.conversation.id;
-
-      // 在消息列表中显示用户上传的图片消息
-      final conversationProvider = Provider.of<ConversationProvider>(
-        context,
-        listen: false,
-      );
-
-      // 添加用户消息，使用永久存储的路径
-      await conversationProvider.addMessage(
-        conversationId: widget.conversation.id,
-        role: MessageRole.user,
-        content: "[Загрузка изображения...]",
-        isImage: true,
-        imageLocalPath: localPath,
-      );
-
-      _scrollToBottom();
-
-      // 上传图片到Dify API
-      final response = await _difyService!.uploadFile(File(localPath));
-
-      if (response.containsKey('id')) {
-        final fileId = response['id'];
-        final messageContent = "";
-
-        // 更新最后一条用户消息为实际的图片消息
-        await conversationProvider.updateLastUserMessage(
-          conversationId: widget.conversation.id,
-          content: messageContent,
-          fileId: fileId,
-          isImage: true,
-          imageLocalPath: localPath,
-        );
-
-        final textPrompt = "Проанализируй это изображение";
-        final chatResponse = await _difyService!.sendMessage(
-          textPrompt,
-          sessionId: sessionId,
-          fileIds: [fileId],
-        );
-
-        await conversationProvider.addMessage(
-          conversationId: widget.conversation.id,
-          role: MessageRole.assistant,
-          content: chatResponse,
-        );
-      } else {
-        throw Exception("上传成功但服务器未返回文件ID: $response");
-      }
-
-      _showCustomSnackbar('Изображение загружено');
-    } catch (e) {
-      print('图片上传失败: $e');
-
-      final conversationProvider = Provider.of<ConversationProvider>(
-        context,
-        listen: false,
-      );
-      await conversationProvider.addMessage(
-        conversationId: widget.conversation.id,
-        role: MessageRole.assistant,
-        content: 'Не удалось загрузить изображение: ${e.toString()}',
-      );
-
-      _showCustomSnackbar('Не удалось загрузить изображение: ${e.toString()}');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      _scrollToBottom();
-    }
-  }
 }
