@@ -1095,16 +1095,20 @@ void _sendMessage() async {
         // 发送消息
         await _xiaozhiService!.sendTextMessage(message);
       
-    } catch (e) {
+    } catch (e, stackTrace) {
       print('聊天屏幕: 发送消息错误: $e');
 
       if (!mounted) return;
 
-      // Add error message
+      final diagnostics = _xiaozhiService?.buildDiagnostics(
+            e,
+            stackTrace: stackTrace,
+          ) ??
+          'Диагностика XiaoZhi\\nОшибка: $e\\nВремя: ${DateTime.now().toIso8601String()}\\nСервис XiaoZhi не был инициализирован.';
       await conversationProvider.addMessage(
         conversationId: widget.conversation.id,
         role: MessageRole.assistant,
-        content: 'Произошла ошибка: ${e.toString()}',
+        content: 'Произошла ошибка:\\n$e\\n\\nТехническая информация:\\n$diagnostics',
       );
     } finally {
       if (!mounted) return;
