@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:ai_assistant/models/message.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +21,16 @@ class MessageBubble extends StatelessWidget {
   });
 
   @override
+  Future<void> _copyContent(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: message.content));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Сообщение скопировано'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+  }
+
   Widget build(BuildContext context) {
     final isUser = message.role == MessageRole.user;
     final isSystem = message.role == MessageRole.system;
@@ -77,7 +88,18 @@ class MessageBubble extends StatelessWidget {
                             ),
                           ),
                 ),
-                const SizedBox(height: 4),
+                Align(
+                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                  child: IconButton(
+                    tooltip: 'Скопировать сообщение',
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 28),
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.copy, size: 15, color: Colors.grey.shade500),
+                    onPressed: () => _copyContent(context),
+                  ),
+                ),
+                const SizedBox(height: 2),
                 if (message.timestamp != null)
                   Text(
                     _formatTime(message.timestamp),
@@ -142,9 +164,22 @@ class MessageBubble extends StatelessWidget {
             color: Colors.grey.shade100,
             borderRadius: BorderRadius.circular(16),
           ),
-          child: Text(
-            message.content,
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  message.content,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Скопировать сообщение',
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.copy, size: 16),
+                onPressed: () => _copyContent(context),
+              ),
+            ],
           ),
         ),
       ),
