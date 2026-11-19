@@ -1,5 +1,4 @@
-// Keep the legacy value so previously saved Dify conversations remain readable.
-enum ConversationType { dify, xiaozhi }
+enum ConversationType { legacy, xiaozhi }
 
 class Conversation {
   final String id;
@@ -27,7 +26,9 @@ class Conversation {
     return Conversation(
       id: json['id'],
       title: json['title'],
-      type: ConversationType.values.byName(json['type']),
+      type: json['type'] == 'dify'
+          ? ConversationType.legacy
+          : ConversationType.values.byName(json['type']),
       configId: json['configId'] ?? '',
       lastMessageTime: DateTime.parse(json['lastMessageTime']),
       lastMessage: json['lastMessage'],
