@@ -20,7 +20,6 @@ class MessageBubble extends StatelessWidget {
     this.conversationType,
   });
 
-  @override
   Future<void> _copyContent(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: message.content));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -31,6 +30,7 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  @override
   Widget build(BuildContext context) {
     final isUser = message.role == MessageRole.user;
     final isSystem = message.role == MessageRole.system;
