@@ -1,3 +1,4 @@
+// Keep the legacy value so previously saved Dify conversations remain readable.
 enum ConversationType { dify, xiaozhi }
 
 class Conversation {
@@ -5,7 +6,7 @@ class Conversation {
   final String title;
   final ConversationType type;
   final String
-  configId; // For both Xiaozhi and Dify conversations, references the config
+  configId; // References the XiaoZhi connection for active conversations
   final DateTime lastMessageTime;
   final String lastMessage;
   final int unreadCount;
