@@ -365,7 +365,7 @@ class AudioUtil {
       for (var channel = 0; channel < channels; channel++) {
         sum += source.getInt16((i * channels + channel) * 2, Endian.little);
       }
-      mono[i] = (sum / channels).round().clamp(-32768, 32767);
+      mono[i] = (sum / channels).round().clamp(-32768, 32767).toInt();
     }
 
     // Линейная передискретизация к частоте, которую объявляет XiaoZhi.
@@ -376,11 +376,11 @@ class AudioUtil {
     final resampled = Int16List(outputCount);
     for (var i = 0; i < outputCount; i++) {
       final position = i * sourceRate / SAMPLE_RATE;
-      final left = position.floor().clamp(0, mono.length - 1);
-      final right = (left + 1).clamp(0, mono.length - 1);
+      final left = position.floor().clamp(0, mono.length - 1).toInt();
+      final right = (left + 1).clamp(0, mono.length - 1).toInt();
       final fraction = position - left;
       final value = mono[left] * (1.0 - fraction) + mono[right] * fraction;
-      resampled[i] = value.round().clamp(-32768, 32767);
+      resampled[i] = value.round().clamp(-32768, 32767).toInt();
     }
 
     // Opus принимает кадры фиксированной длительности. Используем 60 мс,
@@ -394,7 +394,7 @@ class AudioUtil {
     final frames = <Uint8List>[];
     for (var offset = 0; offset < resampled.length; offset += samplesPerFrame) {
       final frame = Int16List(samplesPerFrame);
-      final count = math.min(samplesPerFrame, resampled.length - offset);
+      final int count = math.min(samplesPerFrame, resampled.length - offset).toInt();
       frame.setRange(0, count, resampled, offset);
       frames.add(Uint8List.fromList(encoder.encode(input: frame)));
     }
