@@ -271,10 +271,17 @@ class XiaozhiService {
     _listeners.remove(listener);
   }
 
-  /// 分发事件到所有监听器
+  /// 分发事件 по снимку списка, чтобы callbacks могли безопасно
+  /// добавлять и удалять слушателей во время обработки события.
   void _dispatchEvent(XiaozhiServiceEvent event) {
-    for (var listener in _listeners) {
-      listener(event);
+    final listenersSnapshot = List<XiaozhiServiceListener>.from(_listeners);
+    for (final listener in listenersSnapshot) {
+      if (!_listeners.contains(listener)) continue;
+      try {
+        listener(event);
+      } catch (e) {
+        print('$TAG: Ошибка обработчика события: $e');
+      }
     }
   }
 
