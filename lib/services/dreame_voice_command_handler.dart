@@ -113,6 +113,9 @@ class DreameVoiceCommandHandler {
         text.contains('сухая уборка') ||
         text.contains('сценарий') ||
         text.contains('сделай уборку') ||
+        text.contains('сделать уборку') ||
+        text.startsWith('сделать ') ||
+        text == 'сделать' ||
         text.startsWith('сделаю ') ||
         text == 'сделаю' ||
         text.startsWith('делать ') ||
@@ -225,6 +228,9 @@ class DreameVoiceCommandHandler {
       return 1; // Mop.
     }
     if (text.contains('сделай уборку') ||
+        text.contains('сделать уборку') ||
+        text.startsWith('сделать ') ||
+        text == 'сделать' ||
         text.startsWith('сделаю ') ||
         text == 'сделаю' ||
         text.startsWith('делать ') ||

@@ -18,11 +18,20 @@ class ConversationProvider extends ChangeNotifier {
   Conversation? _lastDeletedConversation;
   List<Message>? _lastDeletedMessages;
 
-  List<Conversation> get conversations => _conversations;
-  List<Conversation> get pinnedConversations =>
-      _conversations.where((conv) => conv.isPinned).toList();
-  List<Conversation> get unpinnedConversations =>
-      _conversations.where((conv) => !conv.isPinned).toList();
+  List<Conversation> get conversations => _sortedByRecentActivity(_conversations);
+  List<Conversation> get pinnedConversations => _sortedByRecentActivity(
+    _conversations.where((conv) => conv.isPinned).toList(),
+  );
+  List<Conversation> get unpinnedConversations => _sortedByRecentActivity(
+    _conversations.where((conv) => !conv.isPinned).toList(),
+  );
+
+  // Keep the newest or most recently active conversations at the top.
+  List<Conversation> _sortedByRecentActivity(List<Conversation> items) {
+    return items..sort(
+      (a, b) => b.lastMessageTime.compareTo(a.lastMessageTime),
+    );
+  }
 
   ConversationProvider() {
     _loadConversations();

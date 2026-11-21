@@ -678,7 +678,9 @@ class DreameService {
       deviceId,
       method: 'set_properties',
       params: [
-        {'did': deviceId, 'siid': 2, 'piid': 6, 'value': mode},
+        // L20 Ultra cleaning mode is MIoT service 4 / property 23:
+        // 0 = vacuum, 1 = mop, 2 = vacuum + mop, 3 = vacuum then mop.
+        {'did': deviceId, 'siid': 4, 'piid': 23, 'value': mode},
       ],
     );
   }
