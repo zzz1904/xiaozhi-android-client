@@ -162,7 +162,8 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedDevice = _devices.where((d) => d.id == _selectedDeviceId).firstOrNull;
+    final matchingDevices = _devices.where((d) => d.id == _selectedDeviceId);
+    final selectedDevice = matchingDevices.isEmpty ? null : matchingDevices.first;
     return Scaffold(
       appBar: AppBar(title: const Text('Dreame L20 Ultra')),
       body: ListView(
