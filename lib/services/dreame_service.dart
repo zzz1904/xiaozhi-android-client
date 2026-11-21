@@ -178,10 +178,19 @@ class DreameService {
       await _login();
       return;
     }
-    await _requestToken({
-      'grant_type': 'refresh_token',
-      'refresh_token': token,
-    });
+    try {
+      await _requestToken({
+        'grant_type': 'refresh_token',
+        'refresh_token': token,
+      });
+    } catch (_) {
+      // The refresh token can be revoked independently of the password.
+      // Retry with the saved account credentials before reporting a failure.
+      if (_email == null || _email!.isEmpty || _password == null || _password!.isEmpty) {
+        rethrow;
+      }
+      await _login();
+    }
   }
 
   Future<void> _requestToken(Map<String, String> form) async {
@@ -420,6 +429,11 @@ class DreameService {
       );
     }
     final code = int.tryParse(data['code']?.toString() ?? '0') ?? 0;
+    if (code == 80001) {
+      throw const DreameCommandUnconfirmedException(
+        'Dreamehome не получил подтверждение от робота. Команда могла быть принята; проверьте состояние пылесоса.',
+      );
+    }
     if (code != 0) {
       final message = data['msg']?.toString() ?? 'код $code';
       throw DreameException('Dreamehome отклонил команду: $message');
@@ -436,4 +450,11 @@ class DreameException implements Exception {
 
   @override
   String toString() => message;
+}
+
+
+/// The cloud did not receive a device acknowledgement in time.
+/// The command may nevertheless have reached the vacuum.
+class DreameCommandUnconfirmedException extends DreameException {
+  const DreameCommandUnconfirmedException(super.message);
 }
