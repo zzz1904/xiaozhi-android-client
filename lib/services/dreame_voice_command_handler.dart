@@ -1,7 +1,6 @@
 import 'package:ai_assistant/services/dreame_service.dart';
 
-/// Detects supported Dreame commands in XiaoZhi's speech-recognition events.
-/// Ordinary conversation is left untouched and never opens a Dreame session.
+/// Detects supported Dreame commands in XiaoZhi speech-recognition events.
 class DreameVoiceCommandHandler {
   final DreameService _service = DreameService();
   bool _busy = false;
@@ -9,40 +8,44 @@ class DreameVoiceCommandHandler {
   Future<String?> handle(String recognizedText) async {
     final text = _normalize(recognizedText);
     if (_busy || !_looksLikeVacuumCommand(text)) return null;
+
     _busy = true;
     try {
       final saved = await _service.loadSavedSettings();
-      if ((saved['email'] ?? '').isEmpty || (saved['password'] ?? '').isEmpty) {
+      if ((saved['email'] ?? '').isEmpty ||
+          (saved['password'] ?? '').isEmpty) {
         return null;
       }
 
       await _service.restoreSession();
       final devices = await _service.getDevices();
       if (devices.isEmpty) return 'В аккаунте Dreamehome не найден пылесос.';
+
       final preferredId = await _service.loadSelectedDeviceId();
-      final matches = devices.where((device) => device.id == preferredId);
-      final device = matches.isEmpty ? devices.first : matches.first;
+      final matchingDevices =
+          devices.where((device) => device.id == preferredId);
+      final device =
+          matchingDevices.isEmpty ? devices.first : matchingDevices.first;
 
       if (_isShortcutRequest(text)) {
         final shortcuts = await _service.getShortcuts(device.id);
-        final shortcutMatches = shortcuts.where((shortcut) {
-          final name = _normalize(shortcut.name);
-          return name.length >= 3 && text.contains(name);
-        });
-        if (shortcutMatches.isNotEmpty) {
-          final shortcut = shortcutMatches.first;
-          await _service.startShortcut(device.id, shortcut.id);
-          return 'Запустил сценарий «${shortcut.name}».';
+        for (final shortcut in shortcuts) {
+          final shortcutName = _normalize(shortcut.name);
+          if (shortcutName.length >= 3 && text.contains(shortcutName)) {
+            await _service.startShortcut(device.id, shortcut.id);
+            return 'Запустил сценарий «${shortcut.name}».';
+          }
         }
       }
 
       final rooms = await _service.getRooms(device);
       if (rooms.isEmpty) return 'На карте пылесоса не удалось найти комнаты.';
-      final allRooms = _isWholeHomeRequest(text);
-      final selected = allRooms
+
+      final wholeHome = _isWholeHomeRequest(text);
+      final selectedRooms = wholeHome
           ? rooms
           : rooms.where((room) => _matchesRoom(text, room.name)).toList();
-      if (selected.isEmpty) return null;
+      if (selectedRooms.isEmpty) return null;
 
       final mode = _requestedCleaningMode(text);
       if (mode != null) {
@@ -50,12 +53,13 @@ class DreameVoiceCommandHandler {
       }
       await _service.cleanSegments(
         device.id,
-        selected.map((room) => room.id).toList(),
+        selectedRooms.map((room) => room.id).toList(),
       );
-      final names = allRooms
+
+      final roomDescription = wholeHome
           ? 'всей квартиры'
-          : selected.map((room) => room.name).join(', ');
-      return 'Отправил роботу команду на уборку: $names.';
+          : selectedRooms.map((room) => room.name).join(', ');
+      return 'Отправил роботу команду на уборку: $roomDescription.';
     } catch (error) {
       return 'Не удалось выполнить команду Dreame: $error';
     } finally {
@@ -71,20 +75,18 @@ class DreameVoiceCommandHandler {
         text.contains('помыть') ||
         text.contains('влажная уборка') ||
         text.contains('сухая уборка') ||
-        text.contains('запусти сценарий') ||
-        text.contains('выполни сценарий') ||
-        text.startsWith('запусти ') ||
+        text.contains('сценарий') ||
         text.contains('сделай уборку') ||
         text.contains('запусти команду') ||
         text.contains('запусти уборку') ||
-        text.contains('начни уборку');
+        text.contains('начни уборку') ||
+        text.startsWith('запусти ');
   }
 
   bool _isShortcutRequest(String text) {
     return text.contains('сценарий') ||
         text.contains('быструю команду') ||
         text.contains('запусти команду') ||
-        text.contains('запусти уборку') ||
         text.startsWith('запусти ');
   }
 
@@ -102,9 +104,11 @@ class DreameVoiceCommandHandler {
     if (name.isEmpty) return false;
     if (text.contains(name)) return true;
 
-    // Russian room names are commonly spoken in the accusative case:
-    // "кухня" -> "кухню", "спальня" -> "спальню", "ванная" -> "ванную".
-    final stem = name.replaceFirst(RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)$'), '');
+    // Match common Russian case endings: «кухня» / «кухню», «спальня» / «спальню».
+    final stem = name.replaceFirst(
+      RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)$'),
+      '',
+    );
     if (stem.length >= 3 && text.contains(stem)) return true;
 
     const aliases = <String, List<String>>{
@@ -117,48 +121,17 @@ class DreameVoiceCommandHandler {
       'туалет': ['toilet', 'wc'],
       'кабинет': ['office', 'study'],
     };
+
     for (final entry in aliases.entries) {
       final russianStem = entry.key.replaceFirst(
-        RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)
-    return false;
-  }
-
-  int? _requestedCleaningMode(String text) {
-    if (text.contains('и помой') || text.contains('пылесос и влажная')) {
-      return 2; // vacuum and mop
-    }
-    if (text.contains('пропылесось') ||
-        text.contains('пылесось') ||
-        text.contains('только пылесос') ||
-        text.contains('сухая уборка')) {
-      return 0; // sweeping / vacuuming
-    }
-    if (text.contains('помой') ||
-        text.contains('помыть') ||
-        text.contains('влажная уборка')) {
-      return 1; // mopping
-    }
-    return null; // "убери" keeps the robot's current cleaning mode.
-  }
-
-  String _normalize(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll('ё', 'е')
-        .replaceAll(RegExp(r'[^a-zа-я0-9\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-  }
-
-  void dispose() => _service.dispose();
-}
-),
+        RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)$'),
         '',
       );
       final mapNameMatches = name == entry.key ||
-          stem == russianStem ||
+          name == russianStem ||
           entry.value.any((alias) => name.contains(alias));
-      final spokenNameMatches = text.contains(russianStem) ||
+      final spokenNameMatches = text.contains(entry.key) ||
+          text.contains(russianStem) ||
           entry.value.any((alias) => text.contains(alias));
       if (mapNameMatches && spokenNameMatches) return true;
     }
@@ -167,20 +140,20 @@ class DreameVoiceCommandHandler {
 
   int? _requestedCleaningMode(String text) {
     if (text.contains('и помой') || text.contains('пылесос и влажная')) {
-      return 2; // vacuum and mop
+      return 2; // Vacuum and mop.
     }
     if (text.contains('пропылесось') ||
         text.contains('пылесось') ||
         text.contains('только пылесос') ||
         text.contains('сухая уборка')) {
-      return 0; // sweeping / vacuuming
+      return 0; // Vacuum.
     }
     if (text.contains('помой') ||
         text.contains('помыть') ||
         text.contains('влажная уборка')) {
-      return 1; // mopping
+      return 1; // Mop.
     }
-    return null; // "убери" keeps the robot's current cleaning mode.
+    return null; // Keep the robot's current mode for a generic «убери».
   }
 
   String _normalize(String value) {
