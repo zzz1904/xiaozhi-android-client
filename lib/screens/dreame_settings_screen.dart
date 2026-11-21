@@ -426,7 +426,6 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
                 ),
               ),
             ),
-          ],
             const SizedBox(height: 16),
             Card(
               child: Padding(
