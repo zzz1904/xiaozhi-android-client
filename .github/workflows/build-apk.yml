@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - test/build-apk
+      - feature/dreame-l20-ultra
   workflow_dispatch:
 
 concurrency:
