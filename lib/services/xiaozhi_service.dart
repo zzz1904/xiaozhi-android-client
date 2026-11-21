@@ -59,6 +59,8 @@ class XiaozhiService {
   WebSocketChannel? _ws;
   bool _hasStartedCall = false;
   MessageListener? _messageListener;
+  bool Function(String)? _localCommandMatcher;
+  bool _suppressAssistantResponse = false;
   Completer<void>? _helloCompleter;
   Completer<void>? _pendingSpeechResponse;
   bool _assistantAutoListenAfterTts = false;
@@ -258,6 +260,23 @@ class XiaozhiService {
   /// 设置消息监听器
   void setMessageListener(MessageListener listener) {
     _messageListener = listener;
+  }
+
+  /// Registers a synchronous local-command matcher for recognized speech.
+  /// Matching commands are aborted before XiaoZhi TTS/audio is processed.
+  void setLocalCommandMatcher(bool Function(String)? matcher) {
+    _localCommandMatcher = matcher;
+    if (matcher == null) _suppressAssistantResponse = false;
+  }
+
+  void _abortAssistantForLocalCommand() {
+    if (_webSocketManager == null || !_isConnected || _sessionId == null) return;
+    _webSocketManager!.sendMessage(jsonEncode({
+      'session_id': _sessionId,
+      'type': 'abort',
+      'reason': 'wake_word_detected',
+    }));
+    _recordDiagnostic('Локальная команда распознана: отправлен abort до обработки ответа XiaoZhi');
   }
 
   /// 添加事件监听器
@@ -706,7 +725,8 @@ class XiaozhiService {
         break;
 
       case XiaozhiEventType.binaryMessage:
-        // 处理二进制音频数据 - 简化直接播放
+        // Do not play the server's answer to a command handled locally.
+        if (_suppressAssistantResponse) break;
         final audioData = event.data as List<int>;
         AudioUtil.playOpusData(Uint8List.fromList(audioData));
         break;
@@ -781,10 +801,14 @@ class XiaozhiService {
           // TTS stop возобновляет автоматическое прослушивание.
           final String state = jsonData['state'] ?? '';
           final String text = jsonData['text'] ?? '';
-          _handleAssistantTtsState(state);
           if (state == 'stop' && _pendingSpeechResponse != null && !_pendingSpeechResponse!.isCompleted) {
             _pendingSpeechResponse!.complete();
           }
+          if (_suppressAssistantResponse) {
+            if (state == 'stop') _suppressAssistantResponse = false;
+            break;
+          }
+          _handleAssistantTtsState(state);
 
           if (state == 'sentence_start' && text.isNotEmpty) {
             print('$TAG: 收到TTS句子: $text');
@@ -795,11 +819,19 @@ class XiaozhiService {
           break;
 
         case 'stt':
-          // 处理语音识别结果
+          // Classify and abort locally handled commands synchronously, before
+          // the next server TTS/audio frame can be played.
           final String text = jsonData['text'] ?? '';
           if (text.isNotEmpty) {
-            print('$TAG: 收到语音识别结果: $text');
-            // 先分发用户消息事件
+            final isLocalCommand = _localCommandMatcher?.call(text) ?? false;
+            if (isLocalCommand) {
+              _suppressAssistantResponse = true;
+              _abortAssistantForLocalCommand();
+            } else {
+              // A new ordinary utterance ends suppression from the previous command.
+              _suppressAssistantResponse = false;
+            }
+            print('$TAG: Получен STT: локальная команда=$isLocalCommand');
             _dispatchEvent(
               XiaozhiServiceEvent(XiaozhiServiceEventType.userMessage, text),
             );

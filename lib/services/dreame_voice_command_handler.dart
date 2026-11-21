@@ -204,7 +204,10 @@ class DreameVoiceCommandHandler {
         text.contains('влажная уборка')) {
       return 1; // Mop.
     }
-    return null; // Keep the robot's current mode for a generic «убери».
+    if (text.contains('сделай уборку')) {
+      return 2; // Generic «сделай уборку» means vacuum + mop.
+    }
+    return null; // Keep the robot's current mode for other generic commands.
   }
 
   String _normalize(String value) {

@@ -87,6 +87,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
     // 设置消息监听器
     _xiaozhiService.setMessageListener(_handleServerMessage);
     _dreameCommandHandler = DreameVoiceCommandHandler();
+    _xiaozhiService.setLocalCommandMatcher(_dreameCommandHandler.isCommand);
     _xiaozhiService.addListener(_handleXiaozhiEvent);
 
     // 连接并切换到语音通话模式
@@ -107,7 +108,6 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
     // STT events arrive while XiaoZhi may already be preparing its own reply.
     // Abort that reply immediately so the request is handled locally by Dreame.
     try {
-      await _xiaozhiService.sendAbortMessage();
       if (!mounted) return;
 
       final conversationProvider = Provider.of<ConversationProvider>(
@@ -166,6 +166,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
   void dispose() {
     // Remove this screen's event listener without affecting other XiaoZhi logic.
     _xiaozhiService.removeListener(_handleXiaozhiEvent);
+    _xiaozhiService.setLocalCommandMatcher(null);
     _dreameCommandHandler.dispose();
     // 切换回普通聊天模式
     _xiaozhiService.switchToChatMode();
