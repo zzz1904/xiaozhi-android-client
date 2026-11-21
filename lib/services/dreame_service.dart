@@ -682,18 +682,51 @@ class DreameService {
     required dynamic params,
   }) async {
     await _ensureSession();
-    final id = Random.secure().nextInt(0x7ffffffe) + 1;
-    return _postJson('/dreame-iot-com-10000/device/sendCommand', {
-      'did': deviceId,
-      'id': id,
-      'data': {
+    // Dreame cloud command IDs are expected to be in the 1000–9999 range.
+    final id = 1000 + Random.secure().nextInt(9000);
+    final stopwatch = Stopwatch()..start();
+    final paramsShape = params is List
+        ? 'list(length=${params.length})'
+        : params is Map
+            ? 'map(keys=${params.keys.toList()})'
+            : params.runtimeType.toString();
+    final propertyRefs = params is List
+        ? params.whereType<Map>().map((item) =>
+            '${item['siid'] ?? '?'}/${item['piid'] ?? item['aiid'] ?? '?'}').join(',')
+        : params is Map
+            ? '${params['siid'] ?? '?'}/${params['piid'] ?? params['aiid'] ?? '?'}'
+            : 'n/a';
+    await DreameDiagnostics.record(
+      'Команда Dreame: method=$method, params=$paramsShape, refs=$propertyRefs.',
+    );
+    try {
+      final response = await _postJson('/dreame-iot-com-10000/device/sendCommand', {
         'did': deviceId,
         'id': id,
-        'method': method,
-        'params': params,
-        'from': _commandFrom,
-      },
-    });
+        'data': {
+          'did': deviceId,
+          'id': id,
+          'method': method,
+          'params': params,
+          'from': _commandFrom,
+        },
+      });
+      stopwatch.stop();
+      final data = response['data'];
+      final result = data is Map ? data['result'] : null;
+      await DreameDiagnostics.record(
+        'Команда Dreame $method: ответ за ${stopwatch.elapsedMilliseconds} мс; '
+        'result=${result is List ? 'list(${result.length})' : result.runtimeType}.',
+      );
+      return response;
+    } catch (error) {
+      stopwatch.stop();
+      await DreameDiagnostics.record(
+        'Команда Dreame $method: ошибка через ${stopwatch.elapsedMilliseconds} мс '
+        '(${error.runtimeType}).',
+      );
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> _postJson(
