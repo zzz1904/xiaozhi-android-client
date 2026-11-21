@@ -7,6 +7,8 @@ import 'package:ai_assistant/models/xiaozhi_config.dart';
 import 'package:ai_assistant/models/dify_config.dart';
 import 'package:ai_assistant/widgets/settings_section.dart';
 import 'package:ai_assistant/services/dify_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:ai_assistant/screens/dreame_settings_screen.dart';
 import 'package:ai_assistant/screens/xiaozhi_pairing_screen.dart';
 
 // 引入main.dart中定义的常量
@@ -32,10 +34,12 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   late TabController _tabController;
   int _currentTabIndex = 0;
+  late Future<PackageInfo> _packageInfoFuture;
 
   @override
   void initState() {
     super.initState();
+    _packageInfoFuture = PackageInfo.fromPlatform();
     final configProvider = Provider.of<ConfigProvider>(context, listen: false);
 
     // 保存Provider引用，以便在dispose中安全使用
@@ -228,6 +232,50 @@ class _SettingsScreenState extends State<SettingsScreen>
                     },
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildCard(
+              title: 'Управление Dreame',
+              subtitle: 'Подключение Dreamehome и запуск сохранённых сценариев',
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: const Icon(Icons.smart_toy_outlined, size: 28),
+                title: const Text('Dreame L20 Ultra'),
+                subtitle: const Text('Аккаунт, устройство и быстрые команды'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const DreameSettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildCard(
+              title: 'Версия приложения',
+              subtitle: 'Информация об установленной сборке',
+              child: FutureBuilder<PackageInfo>(
+                future: _packageInfoFuture,
+                builder: (context, snapshot) {
+                  final info = snapshot.data;
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: const Icon(Icons.info_outline, size: 26),
+                    title: Text(
+                      info == null
+                          ? 'Загрузка версии…'
+                          : 'Версия ${info.version}',
+                    ),
+                    subtitle: Text(
+                      info == null
+                          ? ' '
+                          : 'Сборка ${info.buildNumber}',
+                    ),
+                  );
+                },
               ),
             ),
           ],
