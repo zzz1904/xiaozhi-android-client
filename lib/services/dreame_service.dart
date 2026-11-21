@@ -579,6 +579,29 @@ class DreameService {
             // Keep the raw map name if it isn't base64 encoded.
           }
         }
+        if (name.trim().isEmpty && info is Map) {
+          final type = int.tryParse(info['type']?.toString() ?? '');
+          final index = int.tryParse(info['index']?.toString() ?? '') ?? 0;
+          const presetNames = <int, String>{
+            1: 'Гостиная',
+            2: 'Спальня',
+            3: 'Кабинет',
+            4: 'Кухня',
+            5: 'Столовая',
+            6: 'Ванная',
+            7: 'Балкон',
+            8: 'Коридор',
+            9: 'Подсобная',
+            10: 'Гардеробная',
+            11: 'Переговорная',
+            12: 'Офис',
+            13: 'Фитнес-зона',
+            14: 'Зона отдыха',
+            15: 'Вторая спальня',
+          };
+          name = presetNames[type] ?? '';
+          if (name.isNotEmpty && index > 0) name = '$name ${index + 1}';
+        }
         if (name.trim().isEmpty) name = 'Комната $id';
         return DreameRoom(
           id: id,

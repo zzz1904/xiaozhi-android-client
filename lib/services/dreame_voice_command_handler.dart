@@ -19,7 +19,7 @@ class DreameVoiceCommandHandler {
       final saved = await _service.loadSavedSettings();
       if ((saved['email'] ?? '').isEmpty ||
           (saved['password'] ?? '').isEmpty) {
-        return null;
+        return 'Сначала подключите аккаунт Dreamehome в настройках приложения.';
       }
 
       await _service.restoreSession();
@@ -44,7 +44,7 @@ class DreameVoiceCommandHandler {
               'Голосовая команда: найдено совпадение с сохранённой командой «${shortcut.name}».',
             );
             await _service.startShortcut(device.id, shortcut.id);
-            return 'Запустил команду «${shortcut.name}».';
+            return 'Запрос на запуск команды «${shortcut.name}» передан Dreamehome. Фактический старт робота пока не подтверждён.';
           }
         }
         await DreameDiagnostics.record(
@@ -64,7 +64,9 @@ class DreameVoiceCommandHandler {
       final selectedRooms = wholeHome
           ? rooms
           : rooms.where((room) => _matchesRoom(text, room.name)).toList();
-      if (selectedRooms.isEmpty) return null;
+      if (selectedRooms.isEmpty) {
+        return 'Не нашёл такую комнату или команду в Dreamehome. Проверьте название комнаты на карте и сохранённые быстрые команды.';
+      }
 
       final mode = _requestedCleaningMode(text);
       if (mode != null) {
@@ -80,7 +82,7 @@ class DreameVoiceCommandHandler {
       final roomDescription = wholeHome
           ? 'всей квартиры'
           : selectedRooms.map((room) => room.name).join(', ');
-      return 'Отправил роботу команду на уборку: $roomDescription.';
+      return 'Запрос на уборку $roomDescription передан Dreamehome. Фактический старт робота пока не подтверждён.';
     } catch (error) {
       await DreameDiagnostics.record('Голосовая команда: ошибка выполнения: $error');
       return 'Не удалось выполнить команду Dreame: $error';

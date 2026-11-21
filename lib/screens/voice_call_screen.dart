@@ -34,6 +34,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
   Timer? _callTimer;
   Duration _callDuration = Duration.zero;
   bool _serverReady = false;
+  bool _dreameCommandRunning = false;
 
   late AnimationController _animationController;
   final List<double> _audioLevels = List.filled(30, 0.05);
@@ -100,18 +101,42 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
   }
 
   Future<void> _runDreameVoiceCommand(String recognizedText) async {
-    if (!_dreameCommandHandler.isCommand(recognizedText)) return;
+    if (_dreameCommandRunning || !_dreameCommandHandler.isCommand(recognizedText)) return;
+    _dreameCommandRunning = true;
 
     // STT events arrive while XiaoZhi may already be preparing its own reply.
     // Abort that reply immediately so the request is handled locally by Dreame.
-    await _xiaozhiService.sendAbortMessage();
-    final result = await _dreameCommandHandler.handle(recognizedText);
-    if (result != null && mounted) {
-      _showCustomSnackbar(
-        message: result,
-        icon: Icons.smart_toy_outlined,
-        iconColor: Colors.lightBlueAccent,
+    try {
+      await _xiaozhiService.sendAbortMessage();
+      if (!mounted) return;
+
+      final conversationProvider = Provider.of<ConversationProvider>(
+        context,
+        listen: false,
       );
+      await conversationProvider.addMessage(
+        conversationId: widget.conversation.id,
+        role: MessageRole.assistant,
+        content: 'Понял. Проверяю команду для Dreamehome…',
+      );
+
+      String result;
+      try {
+        result = await _dreameCommandHandler.handle(recognizedText) ??
+            'Не удалось определить комнату или быструю команду Dreame.';
+      } catch (error) {
+        result = 'Ошибка выполнения команды Dreame: $error';
+      }
+
+      if (mounted) {
+        await conversationProvider.addMessage(
+          conversationId: widget.conversation.id,
+          role: MessageRole.assistant,
+          content: result,
+        );
+      }
+    } finally {
+      _dreameCommandRunning = false;
     }
   }
 
