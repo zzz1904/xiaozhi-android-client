@@ -49,7 +49,9 @@ class DreameVoiceCommandHandler {
         for (final shortcut in shortcuts) {
           if (_matchesNamedTarget(text, shortcut.name)) {
             await DreameDiagnostics.record(
-              'Голосовая команда: найдено совпадение с сохранённой командой «${shortcut.name}».',
+              'Голосовая команда: совпадение с сохранённой быстрой командой: '
+              'name=«${shortcut.name}», id=${shortcut.id}; '
+              'запускаю сохранённые настройки без изменения режима.',
             );
             await _service.startShortcut(device.id, shortcut.id);
             return 'Запрос на запуск команды «${shortcut.name}» передан Dreamehome. Фактический старт робота пока не подтверждён.';
