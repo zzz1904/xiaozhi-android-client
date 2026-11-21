@@ -1,4 +1,5 @@
 import 'package:ai_assistant/services/dreame_service.dart';
+import 'package:ai_assistant/services/dreame_diagnostics.dart';
 
 /// Detects supported Dreame commands in XiaoZhi speech-recognition events.
 class DreameVoiceCommandHandler {
@@ -9,6 +10,7 @@ class DreameVoiceCommandHandler {
     final text = _normalize(recognizedText);
     if (_busy || !_looksLikeVacuumCommand(text)) return null;
 
+    await DreameDiagnostics.record('Голосовая команда Dreame: распознана команда уборки (длина текста: ${text.length}).');
     _busy = true;
     try {
       final saved = await _service.loadSavedSettings();
@@ -19,6 +21,7 @@ class DreameVoiceCommandHandler {
 
       await _service.restoreSession();
       final devices = await _service.getDevices();
+      await DreameDiagnostics.record('Голосовая команда: доступных устройств: ${devices.length}.');
       if (devices.isEmpty) return 'В аккаунте Dreamehome не найден пылесос.';
 
       final preferredId = await _service.loadSelectedDeviceId();
@@ -51,16 +54,19 @@ class DreameVoiceCommandHandler {
       if (mode != null) {
         await _service.setCleaningMode(device.id, mode);
       }
+      await DreameDiagnostics.record('Голосовая команда: запускаю уборку комнат, сегментов: ${selectedRooms.length}.');
       await _service.cleanSegments(
         device.id,
         selectedRooms.map((room) => room.id).toList(),
       );
+      await DreameDiagnostics.record('Голосовая команда: запрос уборки отправлен.');
 
       final roomDescription = wholeHome
           ? 'всей квартиры'
           : selectedRooms.map((room) => room.name).join(', ');
       return 'Отправил роботу команду на уборку: $roomDescription.';
     } catch (error) {
+      await DreameDiagnostics.record('Голосовая команда: ошибка выполнения: $error');
       return 'Не удалось выполнить команду Dreame: $error';
     } finally {
       _busy = false;
