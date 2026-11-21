@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:encrypt/encrypt.dart' as enc;
@@ -40,6 +42,21 @@ class DreameDevice {
       online: json['online'] == true || lwt == 1,
     );
   }
+}
+
+/// A room (map segment) on the robot's active saved map.
+class DreameRoom {
+  final int id;
+  final String name;
+  final int mapId;
+  final String mapName;
+
+  const DreameRoom({
+    required this.id,
+    required this.name,
+    required this.mapId,
+    required this.mapName,
+  });
 }
 
 /// A saved quick-cleaning routine created in the Dreamehome app.
@@ -306,6 +323,159 @@ class DreameService {
     return shortcuts;
   }
 
+  /// Reads the active saved map and extracts room/segment identifiers.
+  /// Room IDs are taken from the map pixel grid; names come from seg_inf.
+  Future<List<DreameRoom>> getRooms(DreameDevice device) async {
+    final pointerResponse = await _sendCommand(
+      device.id,
+      method: 'get_properties',
+      params: [
+        {'did': device.id, 'siid': 6, 'piid': 8},
+      ],
+    );
+    final responseData = pointerResponse['data'];
+    final result = responseData is Map<String, dynamic>
+        ? responseData['result']
+        : null;
+    if (result is! List || result.isEmpty || result.first is! Map) {
+      throw DreameException('Робот пока не предоставил список сохранённых карт.');
+    }
+
+    dynamic pointerValue = result.first['value'];
+    if (pointerValue is String) {
+      try {
+        pointerValue = jsonDecode(pointerValue);
+      } catch (_) {
+        throw DreameException('Не удалось прочитать указатель карты робота.');
+      }
+    }
+    if (pointerValue is! Map) {
+      throw DreameException('Сохранённая карта ещё не доступна в облаке.');
+    }
+    final filename = (pointerValue['object_name'] ?? pointerValue['obj_name'])?.toString();
+    if (filename == null || filename.isEmpty) {
+      throw DreameException('В ответе Dreamehome отсутствует адрес файла карты.');
+    }
+
+    final urlResponse = await _postJson('/dreame-user-iot/iotfile/getDownloadUrl', {
+      'did': device.id,
+      'model': device.model,
+      'filename': filename,
+      'region': _region,
+    });
+    final signedUrl = urlResponse['data']?.toString();
+    if (signedUrl == null || !signedUrl.startsWith('http')) {
+      throw DreameException('Dreamehome не вернул ссылку для загрузки карты.');
+    }
+
+    final mapResponse = await _client
+        .get(Uri.parse(signedUrl))
+        .timeout(const Duration(seconds: 30));
+    if (mapResponse.statusCode < 200 || mapResponse.statusCode >= 300) {
+      throw DreameException('Не удалось загрузить карту робота (HTTP ${mapResponse.statusCode}).');
+    }
+
+    dynamic wrapper;
+    try {
+      wrapper = jsonDecode(utf8.decode(mapResponse.bodyBytes));
+    } catch (_) {
+      throw DreameException('Файл карты имеет неизвестный формат.');
+    }
+    if (wrapper is! Map || wrapper['mapstr'] is! List) {
+      throw DreameException('В файле карты не найден список этажей.');
+    }
+
+    final mapEntries = (wrapper['mapstr'] as List).whereType<Map>().toList();
+    if (mapEntries.isEmpty) {
+      throw DreameException('Сохранённая карта не содержит данных помещений.');
+    }
+    final currentMapId = int.tryParse(wrapper['curr_id']?.toString() ?? '');
+    final decodedMaps = <_DecodedDreameMap>[];
+    for (final entry in mapEntries) {
+      final encoded = entry['map']?.toString();
+      if (encoded == null || encoded.isEmpty) continue;
+      try {
+        decodedMaps.add(
+          _decodeSavedMap(
+            encoded,
+            mapName: entry['name']?.toString() ?? 'Этаж',
+          ),
+        );
+      } catch (_) {
+        // A damaged or unsupported floor must not hide other saved floors.
+      }
+    }
+    if (decodedMaps.isEmpty) {
+      throw DreameException('Не удалось декодировать сохранённую карту.');
+    }
+    final active = decodedMaps.where((map) => map.mapId == currentMapId);
+    final selectedMap = active.isEmpty ? decodedMaps.first : active.first;
+    if (selectedMap.rooms.isEmpty) {
+      throw DreameException('На активной карте не обнаружены комнаты.');
+    }
+    return selectedMap.rooms;
+  }
+
+  _DecodedDreameMap _decodeSavedMap(
+    String encoded, {
+    required String mapName,
+  }) {
+    final comma = encoded.indexOf(',');
+    if (comma >= 0) {
+      throw const DreameException(
+        'Карта использует дополнительное шифрование, которое пока не поддерживается.',
+      );
+    }
+    final normalized = encoded
+        .replaceAll('+', '-')
+        .replaceAll('/', '_');
+    final compressed = base64Url.decode(base64Url.normalize(normalized));
+    final inflated = Uint8List.fromList(const ZLibDecoder().convert(compressed));
+    if (inflated.length < 27) {
+      throw const DreameException('Повреждён заголовок карты.');
+    }
+    final header = ByteData.sublistView(inflated);
+    final mapId = header.getInt16(0, Endian.little);
+    final width = header.getInt16(19, Endian.little);
+    final height = header.getInt16(21, Endian.little);
+    if (width <= 0 || height <= 0 || 27 + width * height > inflated.length) {
+      throw const DreameException('Некорректные размеры карты.');
+    }
+
+    final roomIds = <int>{};
+    for (var i = 27; i < 27 + width * height; i++) {
+      final id = inflated[i] >> 2;
+      if (id > 0 && id < 61) roomIds.add(id);
+    }
+
+    final tailOffset = 27 + width * height;
+    final tailText = utf8.decode(inflated.sublist(tailOffset), allowMalformed: true);
+    final tail = jsonDecode(tailText);
+    final segmentInfo = tail is Map ? tail['seg_inf'] : null;
+    final rooms = roomIds.toList()..sort();
+    return _DecodedDreameMap(
+      mapId: mapId,
+      rooms: rooms.map((id) {
+        final info = segmentInfo is Map ? segmentInfo[id.toString()] : null;
+        var name = info is Map ? info['name']?.toString() ?? '' : '';
+        if (name.isNotEmpty) {
+          try {
+            name = utf8.decode(base64.decode(base64.normalize(name)));
+          } catch (_) {
+            // Keep the raw map name if it isn't base64 encoded.
+          }
+        }
+        if (name.trim().isEmpty) name = 'Комната $id';
+        return DreameRoom(
+          id: id,
+          name: name,
+          mapId: mapId,
+          mapName: mapName,
+        );
+      }).toList(),
+    );
+  }
+
   Future<void> startShortcut(String deviceId, int shortcutId) async {
     if (shortcutId < 25 || shortcutId > 128) {
       throw DreameException('Недопустимый идентификатор сценария.');
@@ -457,4 +627,12 @@ class DreameException implements Exception {
 /// The command may nevertheless have reached the vacuum.
 class DreameCommandUnconfirmedException extends DreameException {
   const DreameCommandUnconfirmedException(super.message);
+}
+
+
+class _DecodedDreameMap {
+  final int mapId;
+  final List<DreameRoom> rooms;
+
+  const _DecodedDreameMap({required this.mapId, required this.rooms});
 }
