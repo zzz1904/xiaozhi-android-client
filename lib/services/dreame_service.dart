@@ -662,7 +662,7 @@ class DreameService {
     final code = int.tryParse(data['code']?.toString() ?? '0') ?? 0;
     if (code == 80001) {
       throw const DreameCommandUnconfirmedException(
-        'Dreamehome не получил подтверждение от робота. Команда могла быть принята; проверьте состояние пылесоса.',
+        'Облачный запрос завершился тайм-аутом (80001). Если это была команда управления, она могла быть принята роботом.',
       );
     }
     if (code != 0) {
