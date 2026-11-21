@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/dreame_service.dart';
+import '../services/dreame_diagnostics.dart';
 
 class DreameSettingsScreen extends StatefulWidget {
   const DreameSettingsScreen({super.key});
@@ -53,9 +55,55 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
         _countryController.text = saved['country'] ?? 'TR';
         _languageController.text = saved['language'] ?? 'ru';
       });
-    } catch (e) {
-      if (mounted) setState(() => _error = 'Не удалось прочитать сохранённые настройки: $e');
+
+      if ((saved['email'] ?? '').isEmpty || (saved['password'] ?? '').isEmpty) {
+        await DreameDiagnostics.record('Автовосстановление: сохранённые данные аккаунта отсутствуют.');
+        return;
+      }
+
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+      await DreameDiagnostics.record('Автовосстановление: приложение открыло экран Dreamehome, восстанавливаю сессию.');
+      await _service.restoreSession();
+      final devices = await _service.getDevices();
+      if (!mounted) return;
+      final savedDeviceId = await _service.loadSelectedDeviceId();
+      final savedMatches = devices.where((device) => device.id == savedDeviceId);
+      final selectedId = savedMatches.isNotEmpty
+          ? savedMatches.first.id
+          : (devices.isEmpty ? null : devices.first.id);
+      setState(() {
+        _devices = devices;
+        _connected = true;
+        _selectedDeviceId = selectedId;
+        if (devices.isEmpty) {
+          _error = 'Сессия Dreamehome восстановлена, но список устройств пуст. Откройте диагностику и скопируйте журнал.';
+        }
+      });
+      await DreameDiagnostics.record('Автовосстановление: сессия восстановлена, устройств получено: ${devices.length}.');
+      if (selectedId != null) {
+        await _service.saveSelectedDeviceId(selectedId);
+        await _loadDeviceData(selectedId);
+      }
+    } catch (e, stackTrace) {
+      await DreameDiagnostics.record('Автовосстановление завершилось ошибкой: $e');
+      if (mounted) {
+        setState(() => _error = 'Не удалось восстановить подключение: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _copyDiagnostics() async {
+    final report = await DreameDiagnostics.buildReport(error: _error);
+    await Clipboard.setData(ClipboardData(text: report));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Диагностика Dreamehome скопирована')),
+    );
   }
 
   Future<void> _connect() async {
@@ -70,6 +118,7 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
     });
 
     try {
+      await DreameDiagnostics.record('Ручное подключение: пользователь нажал «Подключить аккаунт».');
       await _service.connect(
         email: _emailController.text,
         password: _passwordController.text,
@@ -95,7 +144,8 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
       } else {
         setState(() => _error = 'Аккаунт подключён, но Dreamehome не вернул список устройств.');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      await DreameDiagnostics.record('Ручное подключение завершилось ошибкой: $e');
       if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -112,9 +162,12 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
       _selectedRoomIds.clear();
     });
     try {
+      await DreameDiagnostics.record('Карта: запрашиваю комнаты устройства.');
       final rooms = await _service.getRooms(deviceMatches.first);
+      await DreameDiagnostics.record('Карта: получено комнат: ${rooms.length}.');
       if (mounted) setState(() => _rooms = rooms);
     } catch (e) {
+      await DreameDiagnostics.record('Карта: ошибка получения комнат: $e');
       if (mounted) setState(() => _error = 'Не удалось загрузить комнаты с карты: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -156,7 +209,9 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
     if (confirmed != true) return;
     setState(() { _loading = true; _error = null; });
     try {
+      await DreameDiagnostics.record('Команда: отправляю уборку сегментов ${ids.join(', ')}.');
       await _service.cleanSegments(deviceId, ids);
+      await DreameDiagnostics.record('Команда: запрос уборки успешно принят API.');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Команда уборки отправлена: $names')),
@@ -196,7 +251,9 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
       _error = null;
     });
     try {
+      await DreameDiagnostics.record('Сценарий: отправляю команду ID=${shortcut.id}.');
       await _service.startShortcut(deviceId, shortcut.id);
+      await DreameDiagnostics.record('Сценарий: запрос успешно отправлен API.');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Команда «${shortcut.name}» отправлена роботу.')),
@@ -224,7 +281,16 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
     final matchingDevices = _devices.where((d) => d.id == _selectedDeviceId);
     final selectedDevice = matchingDevices.isEmpty ? null : matchingDevices.first;
     return Scaffold(
-      appBar: AppBar(title: const Text('Dreame L20 Ultra')),
+      appBar: AppBar(
+        title: const Text('Dreame L20 Ultra'),
+        actions: [
+          IconButton(
+            tooltip: 'Скопировать диагностику',
+            onPressed: _copyDiagnostics,
+            icon: const Icon(Icons.bug_report_outlined),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
