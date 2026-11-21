@@ -30,15 +30,28 @@ class DreameVoiceCommandHandler {
       final device =
           matchingDevices.isEmpty ? devices.first : matchingDevices.first;
 
-      if (_isShortcutRequest(text)) {
+      // Saved Dreamehome routines take priority over map rooms. This allows
+      // natural phrases such as "сделай уборку в прихожей" to launch a
+      // routine named "Прихожая", without requiring the word "сценарий".
+      try {
         final shortcuts = await _service.getShortcuts(device.id);
         for (final shortcut in shortcuts) {
-          final shortcutName = _normalize(shortcut.name);
-          if (shortcutName.length >= 3 && text.contains(shortcutName)) {
+          if (_matchesNamedTarget(text, shortcut.name)) {
+            await DreameDiagnostics.record(
+              'Голосовая команда: найдено совпадение с сохранённой командой «${shortcut.name}».',
+            );
             await _service.startShortcut(device.id, shortcut.id);
-            return 'Запустил сценарий «${shortcut.name}».';
+            return 'Запустил команду «${shortcut.name}».';
           }
         }
+        await DreameDiagnostics.record(
+          'Голосовая команда: совпадение с сохранёнными командами не найдено; проверяю комнаты карты.',
+        );
+      } catch (error) {
+        // A shortcut lookup failure must not prevent ordinary room cleaning.
+        await DreameDiagnostics.record(
+          'Голосовая команда: не удалось проверить сохранённые команды (${error.runtimeType}); перехожу к комнатам карты.',
+        );
       }
 
       final rooms = await _service.getRooms(device);
@@ -86,14 +99,9 @@ class DreameVoiceCommandHandler {
         text.contains('запусти команду') ||
         text.contains('запусти уборку') ||
         text.contains('начни уборку') ||
-        text.startsWith('запусти ');
-  }
-
-  bool _isShortcutRequest(String text) {
-    return text.contains('сценарий') ||
-        text.contains('быструю команду') ||
-        text.contains('запусти команду') ||
-        text.startsWith('запусти ');
+        text.startsWith('запусти ') ||
+        text.startsWith('включи ') ||
+        text.startsWith('активируй ');
   }
 
   bool _isWholeHomeRequest(String text) {
@@ -105,17 +113,52 @@ class DreameVoiceCommandHandler {
         text.contains('по всей квартире');
   }
 
+  /// Matches all meaningful words of a saved command name against the
+  /// recognized phrase, allowing common Russian grammatical endings.
+  bool _matchesNamedTarget(String text, String targetName) {
+    final targetWords = _normalize(targetName)
+        .split(' ')
+        .where((word) => word.length >= 3)
+        .map(_stemRussianWord)
+        .toList();
+    if (targetWords.isEmpty) return false;
+
+    final spokenWords = _normalize(text)
+        .split(' ')
+        .where((word) => word.length >= 3)
+        .map(_stemRussianWord)
+        .toSet();
+    return targetWords.every(spokenWords.contains);
+  }
+
+  String _stemRussianWord(String word) {
+    // Normalize common adjective, noun and case endings:
+    // прихожая / прихожей / прихожую -> прихож.
+    const endings = [
+      'иями', 'ями', 'ами', 'ого', 'его', 'ому', 'ему',
+      'ыми', 'ими', 'ая', 'яя', 'ую', 'юю', 'ое', 'ее',
+      'ые', 'ие', 'ей', 'ой', 'ый', 'ий', 'ом', 'ем',
+      'ам', 'ям', 'ах', 'ях', 'ов', 'ев', 'а', 'я',
+      'ы', 'и', 'у', 'ю', 'е', 'о',
+    ];
+    for (final ending in endings) {
+      if (word.endsWith(ending) && word.length - ending.length >= 3) {
+        return word.substring(0, word.length - ending.length);
+      }
+    }
+    return word;
+  }
+
   bool _matchesRoom(String text, String roomName) {
     final name = _normalize(roomName);
     if (name.isEmpty) return false;
     if (text.contains(name)) return true;
 
     // Match common Russian case endings: «кухня» / «кухню», «спальня» / «спальню».
-    final stem = name.replaceFirst(
-      RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)$'),
-      '',
-    );
-    if (stem.length >= 3 && text.contains(stem)) return true;
+    final stem = _stemRussianWord(name);
+    if (stem.length >= 3 && text.split(' ').any(
+      (word) => _stemRussianWord(word) == stem,
+    )) return true;
 
     const aliases = <String, List<String>>{
       'кухня': ['kitchen'],
@@ -129,15 +172,12 @@ class DreameVoiceCommandHandler {
     };
 
     for (final entry in aliases.entries) {
-      final russianStem = entry.key.replaceFirst(
-        RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)$'),
-        '',
-      );
+      final russianStem = _stemRussianWord(entry.key);
       final mapNameMatches = name == entry.key ||
           name == russianStem ||
           entry.value.any((alias) => name.contains(alias));
       final spokenNameMatches = text.contains(entry.key) ||
-          text.contains(russianStem) ||
+          text.split(' ').any((word) => _stemRussianWord(word) == russianStem) ||
           entry.value.any((alias) => text.contains(alias));
       if (mapNameMatches && spokenNameMatches) return true;
     }
