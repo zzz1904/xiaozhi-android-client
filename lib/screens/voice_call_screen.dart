@@ -6,6 +6,7 @@ import 'package:ai_assistant/models/message.dart';
 import 'package:ai_assistant/models/xiaozhi_config.dart';
 import 'package:ai_assistant/providers/conversation_provider.dart';
 import 'package:ai_assistant/services/xiaozhi_service.dart';
+import 'package:ai_assistant/services/dreame_voice_command_handler.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -26,6 +27,7 @@ class VoiceCallScreen extends StatefulWidget {
 class _VoiceCallScreenState extends State<VoiceCallScreen>
     with SingleTickerProviderStateMixin {
   late XiaozhiService _xiaozhiService;
+  late final DreameVoiceCommandHandler _dreameCommandHandler;
   bool _isConnected = false;
   bool _isSpeaking = false;
   String _statusText = 'Подключение...';
@@ -83,10 +85,29 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
 
     // 设置消息监听器
     _xiaozhiService.setMessageListener(_handleServerMessage);
+    _dreameCommandHandler = DreameVoiceCommandHandler();
+    _xiaozhiService.addListener(_handleXiaozhiEvent);
 
     // 连接并切换到语音通话模式
     _connectToVoiceService();
     _startAudioVisualizer();
+  }
+
+  void _handleXiaozhiEvent(XiaozhiServiceEvent event) {
+    if (event.type == XiaozhiServiceEventType.userMessage && event.data is String) {
+      _runDreameVoiceCommand(event.data as String);
+    }
+  }
+
+  Future<void> _runDreameVoiceCommand(String recognizedText) async {
+    final result = await _dreameCommandHandler.handle(recognizedText);
+    if (result != null && mounted) {
+      _showCustomSnackbar(
+        message: result,
+        icon: Icons.smart_toy_outlined,
+        iconColor: Colors.lightBlueAccent,
+      );
+    }
   }
 
   void _handleServerMessage(dynamic message) {
@@ -113,6 +134,9 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
 
   @override
   void dispose() {
+    // 別断开 XiaoZhi 的其它逻辑；只移除本屏幕的监听器。
+    _xiaozhiService.removeListener(_handleXiaozhiEvent);
+    _dreameCommandHandler.dispose();
     // 切换回普通聊天模式
     _xiaozhiService.switchToChatMode();
     _callTimer?.cancel();
