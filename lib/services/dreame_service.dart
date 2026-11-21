@@ -8,6 +8,8 @@ import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'dreame_diagnostics.dart';
+
 /// A Dreamehome vacuum visible to the signed-in account.
 class DreameDevice {
   final String id;
@@ -23,9 +25,9 @@ class DreameDevice {
   });
 
   factory DreameDevice.fromJson(Map<String, dynamic> json) {
-    final id = (json['did'] ?? '').toString();
-    final model = (json['model'] ?? '').toString();
-    final name = (json['customName'] ?? json['deviceName'] ?? model).toString();
+    final id = (json['did'] ?? json['deviceId'] ?? json['device_id'] ?? json['id'] ?? '').toString();
+    final model = (json['model'] ?? json['modelName'] ?? json['productName'] ?? '').toString();
+    final name = (json['customName'] ?? json['deviceName'] ?? json['name'] ?? model).toString();
     final property = json['property'];
     var lwt = json['lwt'];
     if (property is String) {
@@ -132,6 +134,7 @@ class DreameService {
       throw DreameException('Неизвестный регион Dreamehome.');
     }
 
+    await DreameDiagnostics.record('Подключение: запуск авторизации для региона $_region, страна $_country.');
     await _login();
     await _storage.write(key: 'dreame.email', value: _email);
     await _storage.write(key: 'dreame.password', value: _password);
@@ -152,6 +155,7 @@ class DreameService {
     _uid = await _storage.read(key: 'dreame.uid');
     final expiry = await _storage.read(key: 'dreame.expiresAt');
     _expiresAt = expiry == null ? null : DateTime.tryParse(expiry);
+    await DreameDiagnostics.record('Сессия восстановлена: логин сохранён=${_email?.isNotEmpty == true}, access token сохранён=${_accessToken?.isNotEmpty == true}, refresh token сохранён=${_refreshToken?.isNotEmpty == true}, срок действия=${_expiresAt?.toIso8601String() ?? "неизвестен"}.');
   }
 
   Future<void> saveSelectedDeviceId(String deviceId) async {
@@ -184,6 +188,7 @@ class DreameService {
   }
 
   Future<void> _login() async {
+    await DreameDiagnostics.record('Авторизация: отправка password grant на $_host.');
     final digest = crypto.md5.convert(utf8.encode('$_password$_passwordSalt'));
     final form = {
       'grant_type': 'password',
@@ -227,7 +232,9 @@ class DreameService {
           body: form,
         )
         .timeout(const Duration(seconds: 25));
+    await DreameDiagnostics.record('Авторизация: HTTP ${response.statusCode}, получен ответ сервера.');
     final data = _decodeResponse(response);
+    await DreameDiagnostics.record('Авторизация: поля ответа ${data.keys.toList()}, access token присутствует=${(data['access_token']?.toString().isNotEmpty ?? false)}.');
     final access = data['access_token']?.toString();
     if (access == null || access.isEmpty) {
       final description = data['error_description'] ?? data['msg'] ?? data['error'];
@@ -258,16 +265,19 @@ class DreameService {
       if (_email == null || _email!.isEmpty || _password == null || _password!.isEmpty) {
         throw DreameException('Сначала подключите аккаунт Dreamehome.');
       }
+      await DreameDiagnostics.record('Сессия: access token отсутствует, выполняется повторный вход по сохранённым данным.');
       await _login();
       return;
     }
     if (_expiresAt == null ||
         DateTime.now().isAfter(_expiresAt!.subtract(const Duration(seconds: 100)))) {
+      await DreameDiagnostics.record('Сессия: access token истёк или срок неизвестен, обновляю токен.');
       await _refresh();
     }
   }
 
   Future<List<DreameDevice>> getDevices() async {
+    await DreameDiagnostics.record('Устройства: начинаю запрос списка устройств (listV2).');
     await _ensureSession();
     final data = await _postJson('/dreame-user-iot/iotuserbind/device/listV2', {
       'sharedStatus': 1,
@@ -276,21 +286,92 @@ class DreameService {
       'lang': _language,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
-    final payload = data['data'];
-    dynamic records;
-    if (payload is Map<String, dynamic>) {
-      final page = payload['page'];
-      records = page is Map<String, dynamic>
-          ? page['records']
-          : payload['records'];
+    final payload = _decodeNestedJson(data['data']);
+    await DreameDiagnostics.record(
+      'Устройства: HTTP-ответ успешно разобран; корневые поля=${data.keys.toList()}, тип data=${payload.runtimeType}, поля data=${payload is Map ? payload.keys.toList() : "нет"}.',
+    );
+    final records = _extractDeviceRecords(payload) ??
+        _extractDeviceRecords(data['records']) ??
+        _extractDeviceRecords(data['result']);
+    if (records == null) {
+      await DreameDiagnostics.record(
+        'Устройства: список не найден. Структура ответа: ${_describeShape(data)}.',
+      );
+      return [];
     }
-    records ??= data['records'];
-    if (records is! List) return [];
-    return records
+    final devices = records
         .whereType<Map>()
         .map((item) => DreameDevice.fromJson(Map<String, dynamic>.from(item)))
         .where((device) => device.id.isNotEmpty)
         .toList();
+    await DreameDiagnostics.record(
+      'Устройства: найдено записей=${records.length}, распознано устройств=${devices.length}.',
+    );
+    if (devices.isEmpty && records.isNotEmpty) {
+      await DreameDiagnostics.record(
+        'Устройства: поля первой записи=${records.first is Map ? (records.first as Map).keys.toList() : records.first.runtimeType}.',
+      );
+    }
+    return devices;
+  }
+
+  dynamic _decodeNestedJson(dynamic value) {
+    if (value is String) {
+      try {
+        return jsonDecode(value);
+      } catch (_) {
+        return value;
+      }
+    }
+    return value;
+  }
+
+  List<dynamic>? _extractDeviceRecords(dynamic value, [int depth = 0]) {
+    if (depth > 6 || value == null) return null;
+    final decoded = _decodeNestedJson(value);
+    if (decoded is List) {
+      if (decoded.isEmpty) return decoded;
+      if (decoded.any((item) => item is Map &&
+          (item.containsKey('did') || item.containsKey('deviceId') ||
+           item.containsKey('device_id') || item.containsKey('id')))) {
+        return decoded;
+      }
+      for (final item in decoded) {
+        final nested = _extractDeviceRecords(item, depth + 1);
+        if (nested != null) return nested;
+      }
+      return null;
+    }
+    if (decoded is Map) {
+      if (decoded.containsKey('did') || decoded.containsKey('deviceId') ||
+          decoded.containsKey('device_id')) {
+        return [decoded];
+      }
+      for (final key in const [
+        'page', 'records', 'list', 'devices', 'deviceList',
+        'device_list', 'data', 'result', 'rows',
+      ]) {
+        if (decoded.containsKey(key)) {
+          final nested = _extractDeviceRecords(decoded[key], depth + 1);
+          if (nested != null) return nested;
+        }
+      }
+    }
+    return null;
+  }
+
+  String _describeShape(dynamic value, [int depth = 0]) {
+    if (depth > 4) return '…';
+    final decoded = _decodeNestedJson(value);
+    if (decoded is Map) {
+      return '{${decoded.keys.take(20).join(', ')}'
+          '${decoded.length > 20 ? ', …' : ''}}';
+    }
+    if (decoded is List) {
+      return 'List(length=${decoded.length}'
+          '${decoded.isEmpty ? '' : ', first=${_describeShape(decoded.first, depth + 1)}'})';
+    }
+    return decoded.runtimeType.toString();
   }
 
   Future<List<DreameShortcut>> getShortcuts(String deviceId) async {
@@ -662,6 +743,7 @@ class DreameService {
       );
     }
     final code = int.tryParse(data['code']?.toString() ?? '0') ?? 0;
+    DreameDiagnostics.record('HTTP ${response.statusCode}: code=$code, поля ответа=${data.keys.toList()}.');
     if (code == 80001) {
       throw const DreameCommandUnconfirmedException(
         'Облачный запрос завершился тайм-аутом (80001). Если это была команда управления, она могла быть принята роботом.',
