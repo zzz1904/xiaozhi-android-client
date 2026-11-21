@@ -9,6 +9,7 @@ import '../services/xiaozhi_websocket_manager.dart';
 import '../utils/device_util.dart';
 import '../utils/audio_util.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'dreame_diagnostics.dart';
 
 /// 小智服务事件类型
 enum XiaozhiServiceEventType {
@@ -61,6 +62,7 @@ class XiaozhiService {
   MessageListener? _messageListener;
   bool Function(String)? _localCommandMatcher;
   bool _suppressAssistantResponse = false;
+  int _suppressedBinaryFrames = 0;
   Completer<void>? _helloCompleter;
   Completer<void>? _pendingSpeechResponse;
   bool _assistantAutoListenAfterTts = false;
@@ -78,16 +80,19 @@ class XiaozhiService {
     print('$TAG: $line');
   }
 
-  String buildDiagnostics(Object error, {StackTrace? stackTrace}) {
+  String buildDiagnostics([Object? error], {StackTrace? stackTrace}) {
     final uri = Uri.tryParse(websocketUrl);
     final lines = <String>[
       'Диагностика XiaoZhi',
-      'Ошибка: $error',
+      if (error != null) 'Ошибка: $error',
       'Время: ${DateTime.now().toIso8601String()}',
       'WebSocket: ${uri == null ? "некорректный адрес" : "${uri.scheme}://${uri.host}${uri.hasPort ? ":${uri.port}" : ""}${uri.path}"}',
       'Состояние соединения приложения: $_isConnected',
       'Состояние WebSocket: ${_webSocketManager?.isConnected ?? false}',
       'Session ID получен: ${_sessionId != null}',
+      'Обработчик локальных команд зарегистрирован: ${_localCommandMatcher != null}',
+      'Подавление ответа XiaoZhi активно: $_suppressAssistantResponse',
+      'Подавлено бинарных аудиофрагментов: $_suppressedBinaryFrames',
       if (_lastTextRequestAt != null) 'Последний текстовый запрос: ${_lastTextRequestAt!.toIso8601String()}',
       'Последние события:',
       ..._diagnosticEvents,
@@ -267,16 +272,24 @@ class XiaozhiService {
   void setLocalCommandMatcher(bool Function(String)? matcher) {
     _localCommandMatcher = matcher;
     if (matcher == null) _suppressAssistantResponse = false;
+    _recordDiagnostic('Регистрация перехватчика локальных команд: ${matcher == null ? "ОТКЛЮЧЕН" : "ВКЛЮЧЕН"}.');
   }
 
   void _abortAssistantForLocalCommand() {
-    if (_webSocketManager == null || !_isConnected || _sessionId == null) return;
-    _webSocketManager!.sendMessage(jsonEncode({
-      'session_id': _sessionId,
-      'type': 'abort',
-      'reason': 'wake_word_detected',
-    }));
-    _recordDiagnostic('Локальная команда распознана: отправлен abort до обработки ответа XiaoZhi');
+    if (_webSocketManager == null || !_isConnected || _sessionId == null) {
+      _recordDiagnostic('ABORT НЕ ОТПРАВЛЕН: manager=${_webSocketManager != null}, connected=$_isConnected, session=${_sessionId != null}.');
+      return;
+    }
+    try {
+      _webSocketManager!.sendMessage(jsonEncode({
+        'session_id': _sessionId,
+        'type': 'abort',
+        'reason': 'wake_word_detected',
+      }));
+      _recordDiagnostic('ABORT отправлен для локальной команды.');
+    } catch (error) {
+      _recordDiagnostic('ОШИБКА отправки ABORT: $error');
+    }
   }
 
   /// 添加事件监听器
@@ -726,7 +739,13 @@ class XiaozhiService {
 
       case XiaozhiEventType.binaryMessage:
         // Do not play the server's answer to a command handled locally.
-        if (_suppressAssistantResponse) break;
+        if (_suppressAssistantResponse) {
+          _suppressedBinaryFrames++;
+          if (_suppressedBinaryFrames == 1 || _suppressedBinaryFrames % 20 == 0) {
+            _recordDiagnostic('Аудио XiaoZhi подавлено: кадров=$_suppressedBinaryFrames.');
+          }
+          break;
+        }
         final audioData = event.data as List<int>;
         AudioUtil.playOpusData(Uint8List.fromList(audioData));
         break;
@@ -805,9 +824,14 @@ class XiaozhiService {
             _pendingSpeechResponse!.complete();
           }
           if (_suppressAssistantResponse) {
-            if (state == 'stop') _suppressAssistantResponse = false;
+            _recordDiagnostic('TTS XiaoZhi проигнорирован: state=$state; suppression=true.');
+            if (state == 'stop') {
+              _suppressAssistantResponse = false;
+              _recordDiagnostic('Подавление ответа XiaoZhi снято по TTS stop.');
+            }
             break;
           }
+          _recordDiagnostic('TTS XiaoZhi: state=$state; suppression=false.');
           _handleAssistantTtsState(state);
 
           if (state == 'sentence_start' && text.isNotEmpty) {
@@ -823,13 +847,17 @@ class XiaozhiService {
           // the next server TTS/audio frame can be played.
           final String text = jsonData['text'] ?? '';
           if (text.isNotEmpty) {
+            final matcherRegistered = _localCommandMatcher != null;
             final isLocalCommand = _localCommandMatcher?.call(text) ?? false;
+            _recordDiagnostic('STT ПОЛУЧЕН: text="$text"; matcher=$matcherRegistered; matched=$isLocalCommand; connected=$_isConnected; session=${_sessionId != null}.');
             if (isLocalCommand) {
               _suppressAssistantResponse = true;
+              _recordDiagnostic('Локальная команда: включено подавление ответа XiaoZhi.');
               _abortAssistantForLocalCommand();
             } else {
               // A new ordinary utterance ends suppression from the previous command.
               _suppressAssistantResponse = false;
+              _recordDiagnostic('STT не распознан как команда Dreame; обычный ответ XiaoZhi разрешён.');
             }
             print('$TAG: Получен STT: локальная команда=$isLocalCommand');
             _dispatchEvent(

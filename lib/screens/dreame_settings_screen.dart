@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../services/dreame_service.dart';
 import '../services/dreame_diagnostics.dart';
+import '../services/xiaozhi_service.dart';
 
 class DreameSettingsScreen extends StatefulWidget {
   const DreameSettingsScreen({super.key});
@@ -98,7 +99,10 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
   }
 
   Future<void> _copyDiagnostics() async {
-    final report = await DreameDiagnostics.buildReport(error: _error);
+    final dreameReport = await DreameDiagnostics.buildReport(error: _error);
+    final xiaozhiReport = XiaozhiService.instance?.buildDiagnostics() ??
+        'Диагностика XiaoZhi: экземпляр сервиса сейчас недоступен.';
+    final report = '$dreameReport\\n\\n$xiaozhiReport';
     await Clipboard.setData(ClipboardData(text: report));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

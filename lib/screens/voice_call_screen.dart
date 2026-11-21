@@ -7,6 +7,7 @@ import 'package:ai_assistant/models/xiaozhi_config.dart';
 import 'package:ai_assistant/providers/conversation_provider.dart';
 import 'package:ai_assistant/services/xiaozhi_service.dart';
 import 'package:ai_assistant/services/dreame_voice_command_handler.dart';
+import 'package:ai_assistant/services/dreame_diagnostics.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -102,8 +103,15 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
   }
 
   Future<void> _runDreameVoiceCommand(String recognizedText) async {
-    if (_dreameCommandRunning || !_dreameCommandHandler.isCommand(recognizedText)) return;
+    final isCommand = _dreameCommandHandler.isCommand(recognizedText);
+    await DreameDiagnostics.record('Экран голосового диалога: получено userMessage="$recognizedText"; команда Dreame=$isCommand; handlerBusy=$_dreameCommandRunning.');
+    if (!isCommand) return;
+    if (_dreameCommandRunning) {
+      await DreameDiagnostics.record('Экран голосового диалога: команда пропущена, предыдущая ещё выполняется.');
+      return;
+    }
     _dreameCommandRunning = true;
+    await DreameDiagnostics.record('Экран голосового диалога: запускаю обработчик Dreame.');
 
     // STT events arrive while XiaoZhi may already be preparing its own reply.
     // Abort that reply immediately so the request is handled locally by Dreame.
@@ -124,9 +132,11 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
       try {
         result = await _dreameCommandHandler.handle(recognizedText) ??
             'Не удалось определить комнату или быструю команду Dreame.';
-      } catch (error) {
+      } catch (error, stackTrace) {
+        await DreameDiagnostics.record('Экран голосового диалога: необработанная ошибка handler: $error\n$stackTrace');
         result = 'Ошибка выполнения команды Dreame: $error';
       }
+      await DreameDiagnostics.record('Экран голосового диалога: обработчик завершён; результат="$result".');
 
       if (mounted) {
         await conversationProvider.addMessage(
@@ -137,6 +147,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
       }
     } finally {
       _dreameCommandRunning = false;
+      await DreameDiagnostics.record('Экран голосового диалога: handlerBusy сброшен.');
     }
   }
 

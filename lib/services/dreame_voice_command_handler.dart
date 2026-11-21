@@ -11,7 +11,15 @@ class DreameVoiceCommandHandler {
 
   Future<String?> handle(String recognizedText) async {
     final text = _normalize(recognizedText);
-    if (_busy || !isCommand(recognizedText)) return null;
+    await DreameDiagnostics.record('Dreame handler: вызван; исходный текст="$recognizedText"; normalized="$text"; busy=$_busy.');
+    if (_busy) {
+      await DreameDiagnostics.record('Dreame handler: отказ — обработчик уже занят.');
+      return null;
+    }
+    if (!isCommand(recognizedText)) {
+      await DreameDiagnostics.record('Dreame handler: текст не прошёл повторную проверку isCommand.');
+      return null;
+    }
 
     await DreameDiagnostics.record('Голосовая команда Dreame: распознана команда уборки (длина текста: ${text.length}).');
     _busy = true;
@@ -58,19 +66,23 @@ class DreameVoiceCommandHandler {
       }
 
       final rooms = await _service.getRooms(device);
+      await DreameDiagnostics.record('Голосовая команда: с карты получено комнат: ${rooms.length}; названия=[${rooms.map((room) => room.name).join(" | ")}].');
       if (rooms.isEmpty) return 'На карте пылесоса не удалось найти комнаты.';
 
       final wholeHome = _isWholeHomeRequest(text);
       final selectedRooms = wholeHome
           ? rooms
           : rooms.where((room) => _matchesRoom(text, room.name)).toList();
+      await DreameDiagnostics.record('Голосовая команда: wholeHome=$wholeHome; выбраны комнаты=[${selectedRooms.map((room) => "${room.name}(id=${room.id})").join(", ")}].');
       if (selectedRooms.isEmpty) {
         return 'Не нашёл такую комнату или команду в Dreamehome. Проверьте название комнаты на карте и сохранённые быстрые команды.';
       }
 
       final mode = _requestedCleaningMode(text);
+      await DreameDiagnostics.record('Голосовая команда: выбран режим уборки=${mode ?? "не меняю текущий"}.');
       if (mode != null) {
         await _service.setCleaningMode(device.id, mode);
+        await DreameDiagnostics.record('Голосовая команда: режим $mode успешно передан роботу.');
       }
       await DreameDiagnostics.record('Голосовая команда: запускаю уборку комнат, сегментов: ${selectedRooms.length}.');
       await _service.cleanSegments(
