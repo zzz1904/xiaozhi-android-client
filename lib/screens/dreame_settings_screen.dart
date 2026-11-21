@@ -19,6 +19,8 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
   String _region = 'eu';
   List<DreameDevice> _devices = [];
   List<DreameShortcut> _shortcuts = [];
+  List<DreameRoom> _rooms = [];
+  final Set<int> _selectedRoomIds = {};
   String? _selectedDeviceId;
   bool _loading = false;
   bool _obscurePassword = true;
@@ -83,12 +85,31 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
         _selectedDeviceId = devices.isEmpty ? null : devices.first.id;
       });
       if (devices.isNotEmpty) {
-        await _loadShortcuts(devices.first.id);
+        await _loadDeviceData(devices.first.id);
       } else {
         setState(() => _error = 'Аккаунт подключён, но Dreamehome не вернул список устройств.');
       }
     } catch (e) {
       if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadDeviceData(String deviceId) async {
+    await _loadShortcuts(deviceId);
+    final deviceMatches = _devices.where((device) => device.id == deviceId);
+    if (deviceMatches.isEmpty) return;
+    setState(() {
+      _loading = true;
+      _rooms = [];
+      _selectedRoomIds.clear();
+    });
+    try {
+      final rooms = await _service.getRooms(deviceMatches.first);
+      if (mounted) setState(() => _rooms = rooms);
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Не удалось загрузить комнаты с карты: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -105,6 +126,38 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
       if (mounted) setState(() => _shortcuts = shortcuts);
     } catch (e) {
       if (mounted) setState(() => _error = 'Не удалось загрузить быстрые команды: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _cleanSelectedRooms() async {
+    final deviceId = _selectedDeviceId;
+    final ids = _selectedRoomIds.toList()..sort();
+    if (deviceId == null || ids.isEmpty) return;
+    final names = _rooms.where((room) => ids.contains(room.id)).map((room) => room.name).join(', ');
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Начать уборку комнат?'),
+        content: Text('Робот начнёт уборку: $names'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Начать')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() { _loading = true; _error = null; });
+    try {
+      await _service.cleanSegments(deviceId, ids);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Команда уборки отправлена: $names')),
+        );
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Не удалось запустить уборку комнат: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -325,7 +378,7 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
                         onChanged: _loading ? null : (value) {
                           if (value != null) {
                             setState(() => _selectedDeviceId = value);
-                            _loadShortcuts(value);
+                            _loadDeviceData(value);
                           }
                         },
                       )
@@ -374,12 +427,64 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
               ),
             ),
           ],
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Уборка выбранных комнат',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('Комнаты считываются с активной карты робота. Можно выбрать несколько.'),
+                    const SizedBox(height: 8),
+                    if (_rooms.isEmpty && !_loading)
+                      const Text('Комнаты на карте не найдены или карта пока недоступна.')
+                    else
+                      ..._rooms.map(
+                        (room) => CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          value: _selectedRoomIds.contains(room.id),
+                          title: Text(room.name),
+                          subtitle: Text('ID комнаты: ${room.id}'),
+                          onChanged: _loading
+                              ? null
+                              : (checked) {
+                                  setState(() {
+                                    if (checked == true) {
+                                      _selectedRoomIds.add(room.id);
+                                    } else {
+                                      _selectedRoomIds.remove(room.id);
+                                    }
+                                  });
+                                },
+                        ),
+                      ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _loading || _selectedRoomIds.isEmpty
+                            ? null
+                            : _cleanSelectedRooms,
+                        icon: const Icon(Icons.cleaning_services_outlined),
+                        label: Text('Убрать выбранные комнаты (${_selectedRoomIds.length})'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           const Text(
-            'Примечание: этот этап поддерживает подключение к Dreamehome и запуск сохранённых сценариев. '
-            'Команды уборки отдельных комнат будут подключены после получения и проверки данных карты L20 Ultra. '
-            'Если на аккаунте включено дополнительное подтверждение входа (2FA/SMS), текущий способ входа может '
-            'потребовать отдельного этапа подтверждения.',
+            'Команды уборки используют текущие настройки мощности и подачи воды робота. '
+            'Если на аккаунте включено дополнительное подтверждение входа (2FA/SMS), текущий способ '
+            'авторизации может потребовать отдельного этапа подтверждения.',
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ],
