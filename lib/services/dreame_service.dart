@@ -279,6 +279,9 @@ class DreameService {
   Future<List<DreameDevice>> getDevices() async {
     await DreameDiagnostics.record('Устройства: начинаю запрос списка устройств (listV2).');
     await _ensureSession();
+    await DreameDiagnostics.record(
+      'Устройства: параметры запроса region=$_region, country=$_country, lang=$_language, uid сохранён=${_uid?.isNotEmpty == true}.',
+    );
     final data = await _postJson('/dreame-user-iot/iotuserbind/device/listV2', {
       'sharedStatus': 1,
       'current': 1,
@@ -288,7 +291,7 @@ class DreameService {
     });
     final payload = _decodeNestedJson(data['data']);
     await DreameDiagnostics.record(
-      'Устройства: HTTP-ответ успешно разобран; корневые поля=${data.keys.toList()}, тип data=${payload.runtimeType}, поля data=${payload is Map ? payload.keys.toList() : "нет"}.',
+      'Устройства: HTTP-ответ успешно разобран; структура data=${_describeShape(payload)}.',
     );
     final records = _extractDeviceRecords(payload) ??
         _extractDeviceRecords(data['records']) ??
@@ -338,7 +341,7 @@ class DreameService {
       }
       for (final item in decoded) {
         final nested = _extractDeviceRecords(item, depth + 1);
-        if (nested != null) return nested;
+        if (nested != null && nested.isNotEmpty) return nested;
       }
       return null;
     }
@@ -347,15 +350,20 @@ class DreameService {
           decoded.containsKey('device_id')) {
         return [decoded];
       }
+      List<dynamic>? emptyCandidate;
       for (final key in const [
         'page', 'records', 'list', 'devices', 'deviceList',
         'device_list', 'data', 'result', 'rows',
       ]) {
         if (decoded.containsKey(key)) {
           final nested = _extractDeviceRecords(decoded[key], depth + 1);
-          if (nested != null) return nested;
+          if (nested != null) {
+            if (nested.isNotEmpty) return nested;
+            emptyCandidate ??= nested;
+          }
         }
       }
+      return emptyCandidate;
     }
     return null;
   }
@@ -364,13 +372,16 @@ class DreameService {
     if (depth > 4) return '…';
     final decoded = _decodeNestedJson(value);
     if (decoded is Map) {
-      return '{${decoded.keys.take(20).join(', ')}'
+      final entries = decoded.entries.take(20).map((entry) =>
+          '${entry.key}:${_describeShape(entry.value, depth + 1)}');
+      return '{${entries.join(', ')}'
           '${decoded.length > 20 ? ', …' : ''}}';
     }
     if (decoded is List) {
       return 'List(length=${decoded.length}'
           '${decoded.isEmpty ? '' : ', first=${_describeShape(decoded.first, depth + 1)}'})';
     }
+    if (decoded == null) return 'null';
     return decoded.runtimeType.toString();
   }
 
