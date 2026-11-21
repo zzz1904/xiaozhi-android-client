@@ -5,6 +5,7 @@ on:
     branches:
       - test/build-apk
       - feature/remove-dify-reference-dark-theme
+      - feature/dreame-l20-ultra-based-on-2.0.2-build-4
   workflow_dispatch:
 
 concurrency:
