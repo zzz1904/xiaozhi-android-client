@@ -113,6 +113,12 @@ class DreameVoiceCommandHandler {
         text.contains('сухая уборка') ||
         text.contains('сценарий') ||
         text.contains('сделай уборку') ||
+        text.startsWith('сделаю ') ||
+        text == 'сделаю' ||
+        text.startsWith('делать ') ||
+        text == 'делать' ||
+        text.startsWith('пылесосить ') ||
+        text == 'пылесосить' ||
         text.contains('запусти команду') ||
         text.contains('запусти уборку') ||
         text.contains('начни уборку') ||
@@ -207,6 +213,8 @@ class DreameVoiceCommandHandler {
     }
     if (text.contains('пропылесось') ||
         text.contains('пылесось') ||
+        text.startsWith('пылесосить ') ||
+        text == 'пылесосить' ||
         text.contains('только пылесос') ||
         text.contains('сухая уборка')) {
       return 0; // Vacuum.
@@ -216,8 +224,12 @@ class DreameVoiceCommandHandler {
         text.contains('влажная уборка')) {
       return 1; // Mop.
     }
-    if (text.contains('сделай уборку')) {
-      return 2; // Generic «сделай уборку» means vacuum + mop.
+    if (text.contains('сделай уборку') ||
+        text.startsWith('сделаю ') ||
+        text == 'сделаю' ||
+        text.startsWith('делать ') ||
+        text == 'делать') {
+      return 2; // Generic cleaning requests mean vacuum + mop.
     }
     return null; // Keep the robot's current mode for other generic commands.
   }
