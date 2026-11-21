@@ -66,11 +66,15 @@ class DreameVoiceCommandHandler {
   bool _looksLikeVacuumCommand(String text) {
     return text.contains('убери') ||
         text.contains('пропылесось') ||
+        text.contains('пылесось') ||
         text.contains('помой') ||
         text.contains('помыть') ||
         text.contains('влажная уборка') ||
         text.contains('сухая уборка') ||
         text.contains('запусти сценарий') ||
+        text.contains('выполни сценарий') ||
+        text.startsWith('запусти ') ||
+        text.contains('сделай уборку') ||
         text.contains('запусти команду') ||
         text.contains('запусти уборку') ||
         text.contains('начни уборку');
@@ -125,6 +129,7 @@ class DreameVoiceCommandHandler {
       return 2; // vacuum and mop
     }
     if (text.contains('пропылесось') ||
+        text.contains('пылесось') ||
         text.contains('только пылесос') ||
         text.contains('сухая уборка')) {
       return 0; // sweeping / vacuuming
