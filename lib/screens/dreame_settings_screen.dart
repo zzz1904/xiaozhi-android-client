@@ -79,13 +79,19 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
       );
       final devices = await _service.getDevices();
       if (!mounted) return;
+      final savedDeviceId = await _service.loadSelectedDeviceId();
+      final savedMatches = devices.where((device) => device.id == savedDeviceId);
+      final selectedId = savedMatches.isNotEmpty
+          ? savedMatches.first.id
+          : (devices.isEmpty ? null : devices.first.id);
       setState(() {
         _devices = devices;
         _connected = true;
-        _selectedDeviceId = devices.isEmpty ? null : devices.first.id;
+        _selectedDeviceId = selectedId;
       });
-      if (devices.isNotEmpty) {
-        await _loadDeviceData(devices.first.id);
+      if (selectedId != null) {
+        await _service.saveSelectedDeviceId(selectedId);
+        await _loadDeviceData(selectedId);
       } else {
         setState(() => _error = 'Аккаунт подключён, но Dreamehome не вернул список устройств.');
       }
@@ -378,6 +384,7 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
                         onChanged: _loading ? null : (value) {
                           if (value != null) {
                             setState(() => _selectedDeviceId = value);
+                            _service.saveSelectedDeviceId(value);
                             _loadDeviceData(value);
                           }
                         },
