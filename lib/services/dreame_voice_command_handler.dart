@@ -78,11 +78,17 @@ class DreameVoiceCommandHandler {
         return 'Не нашёл такую комнату или команду в Dreamehome. Проверьте название комнаты на карте и сохранённые быстрые команды.';
       }
 
+      // Apply the requested default route before setting the cleaning mode.
+      // The route is stored separately from CLEANING_MODE and must not be
+      // included in the START_CUSTOM room payload.
+      await _service.setCleaningRoute(device.id, 4);
+      await DreameDiagnostics.record('Голосовая команда: выбран быстрый маршрут уборки.');
+
       final mode = _requestedCleaningMode(text);
       await DreameDiagnostics.record('Голосовая команда: выбран режим уборки=${mode ?? "не меняю текущий"}.');
       if (mode != null) {
         await _service.setCleaningMode(device.id, mode);
-        await DreameDiagnostics.record('Голосовая команда: режим $mode успешно передан роботу.');
+        await DreameDiagnostics.record('Голосовая команда: режим $mode подтверждён роботом.');
       }
       await DreameDiagnostics.record('Голосовая команда: запускаю уборку комнат, сегментов: ${selectedRooms.length}.');
       await _service.cleanSegments(
