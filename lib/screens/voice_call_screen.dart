@@ -134,7 +134,7 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
 
   @override
   void dispose() {
-    // 別断开 XiaoZhi 的其它逻辑；只移除本屏幕的监听器。
+    // Remove this screen's event listener without affecting other XiaoZhi logic.
     _xiaozhiService.removeListener(_handleXiaozhiEvent);
     _dreameCommandHandler.dispose();
     // 切换回普通聊天模式
