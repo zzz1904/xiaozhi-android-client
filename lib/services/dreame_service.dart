@@ -430,7 +430,7 @@ class DreameService {
         .replaceAll('+', '-')
         .replaceAll('/', '_');
     final compressed = base64Url.decode(base64Url.normalize(normalized));
-    final inflated = Uint8List.fromList(const ZLibDecoder().convert(compressed));
+    final inflated = Uint8List.fromList(ZLibDecoder().convert(compressed));
     if (inflated.length < 27) {
       throw const DreameException('Повреждён заголовок карты.');
     }
