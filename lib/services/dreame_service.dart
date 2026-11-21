@@ -451,19 +451,27 @@ class DreameService {
       throw const DreameException('Некорректные размеры карты.');
     }
 
-    final roomIds = <int>{};
-    for (var i = 27; i < 27 + width * height; i++) {
-      final id = inflated[i] >> 2;
-      if (id > 0 && id < 61) roomIds.add(id);
-    }
-
     final tailOffset = 27 + width * height;
     final tailText = utf8.decode(inflated.sublist(tailOffset), allowMalformed: true);
     final tail = jsonDecode(tailText);
-    if (tail is Map && tail['fsm'] is num && tail['fsm'] != 1) {
-      throw const DreameException('Формат карты робота пока не поддерживается.');
-    }
     final segmentInfo = tail is Map ? tail['seg_inf'] : null;
+    final roomIds = <int>{};
+    if (segmentInfo is Map) {
+      for (final key in segmentInfo.keys) {
+        final id = int.tryParse(key.toString());
+        if (id != null && id > 0 && id < 61) roomIds.add(id);
+      }
+    }
+    // Fallback for maps that do not publish seg_inf: fsm:1 stores the
+    // segment ID in the upper six bits; older frames use the low six bits.
+    if (roomIds.isEmpty) {
+      final frameMap = tail is Map && tail['fsm'] == 1;
+      for (var i = 27; i < 27 + width * height; i++) {
+        final pixel = inflated[i];
+        final id = frameMap ? pixel >> 2 : pixel & 0x3f;
+        if (id > 0 && id < 61) roomIds.add(id);
+      }
+    }
     final rooms = roomIds.toList()..sort();
     return _DecodedDreameMap(
       mapId: mapId,
