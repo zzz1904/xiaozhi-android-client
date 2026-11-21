@@ -100,6 +100,11 @@ class _VoiceCallScreenState extends State<VoiceCallScreen>
   }
 
   Future<void> _runDreameVoiceCommand(String recognizedText) async {
+    if (!_dreameCommandHandler.isCommand(recognizedText)) return;
+
+    // STT events arrive while XiaoZhi may already be preparing its own reply.
+    // Abort that reply immediately so the request is handled locally by Dreame.
+    await _xiaozhiService.sendAbortMessage();
     final result = await _dreameCommandHandler.handle(recognizedText);
     if (result != null && mounted) {
       _showCustomSnackbar(
