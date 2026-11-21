@@ -141,7 +141,7 @@ class DreameVoiceCommandHandler {
     return value
         .toLowerCase()
         .replaceAll('ё', 'е')
-        .replaceAll(RegExp(r'[^\\p{L}\\p{N}\\s]', unicode: true), ' ')
+        .replaceAll(RegExp(r'[^a-zа-я0-9\s]'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
