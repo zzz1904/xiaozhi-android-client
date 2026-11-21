@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:ai_assistant/providers/config_provider.dart';
 import 'package:ai_assistant/models/xiaozhi_config.dart';
 import 'package:ai_assistant/screens/xiaozhi_pairing_screen.dart';
+import 'package:ai_assistant/screens/dreame_settings_screen.dart';
 
 // 引入main.dart中定义的常量
 import 'package:ai_assistant/main.dart' show enableDebugTools;
@@ -71,9 +72,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
               padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
             ),
           ),
+          const SizedBox(height: 12),
+          _buildDreameCard(),
           const SizedBox(height: 20),
           _buildAppVersionCard(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDreameCard() {
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Theme.of(context).dividerColor),
+      ),
+      child: ListTile(
+        leading: Icon(Icons.smart_toy_outlined, color: Theme.of(context).colorScheme.primary),
+        title: const Text('Dreame L20 Ultra', style: TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: const Text('Подключение и управление уборкой'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const DreameSettingsScreen()),
+          );
+        },
       ),
     );
   }
