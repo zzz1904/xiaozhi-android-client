@@ -1192,7 +1192,7 @@ void _sendMessage() async {
       if (!mounted) return;
 
       final diagnostics = _xiaozhiService?.buildDiagnostics(
-            e,
+            error: e,
             stackTrace: stackTrace,
           ) ??
           'Диагностика XiaoZhi\nОшибка: $e\nВремя: ${DateTime.now().toIso8601String()}\nСервис XiaoZhi не был инициализирован.';
