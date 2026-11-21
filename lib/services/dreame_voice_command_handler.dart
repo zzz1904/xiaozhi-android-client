@@ -84,7 +84,8 @@ class DreameVoiceCommandHandler {
     return text.contains('сценарий') ||
         text.contains('быструю команду') ||
         text.contains('запусти команду') ||
-        text.contains('запусти уборку');
+        text.contains('запусти уборку') ||
+        text.startsWith('запусти ');
   }
 
   bool _isWholeHomeRequest(String text) {
