@@ -824,11 +824,12 @@ class XiaozhiService {
             _pendingSpeechResponse!.complete();
           }
           if (_suppressAssistantResponse) {
-            _recordDiagnostic('TTS XiaoZhi проигнорирован: state=$state; suppression=true.');
-            if (state == 'stop') {
-              _suppressAssistantResponse = false;
-              _recordDiagnostic('Подавление ответа XiaoZhi снято по TTS stop.');
-            }
+            // Keep suppression for the entire server response. Some XiaoZhi
+            // sessions emit an early TTS stop before sentence_start/audio;
+            // clearing here would let a late agent answer leak through.
+            // The next STT event (a new user utterance) decides whether normal
+            // assistant replies are allowed again.
+            _recordDiagnostic('TTS XiaoZhi проигнорирован: state=$state; suppression=true; ожидаю следующую реплику пользователя.');
             break;
           }
           _recordDiagnostic('TTS XiaoZhi: state=$state; suppression=false.');
