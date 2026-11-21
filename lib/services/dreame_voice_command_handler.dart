@@ -6,9 +6,12 @@ class DreameVoiceCommandHandler {
   final DreameService _service = DreameService();
   bool _busy = false;
 
+  bool isCommand(String recognizedText) =>
+      _looksLikeVacuumCommand(_normalize(recognizedText));
+
   Future<String?> handle(String recognizedText) async {
     final text = _normalize(recognizedText);
-    if (_busy || !_looksLikeVacuumCommand(text)) return null;
+    if (_busy || !isCommand(recognizedText)) return null;
 
     await DreameDiagnostics.record('Голосовая команда Dreame: распознана команда уборки (длина текста: ${text.length}).');
     _busy = true;
