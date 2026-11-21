@@ -233,7 +233,7 @@ class DreameService {
         )
         .timeout(const Duration(seconds: 25));
     await DreameDiagnostics.record('Авторизация: HTTP ${response.statusCode}, получен ответ сервера.');
-    final data = _decodeResponse(response);
+    final data = await _decodeResponse(response);
     await DreameDiagnostics.record('Авторизация: поля ответа ${data.keys.toList()}, access token присутствует=${(data['access_token']?.toString().isNotEmpty ?? false)}.');
     final access = data['access_token']?.toString();
     if (access == null || access.isEmpty) {
@@ -700,6 +700,8 @@ class DreameService {
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 30));
+    await DreameDiagnostics.record('HTTP POST $path: отправлен запрос.');
+    await DreameDiagnostics.record('HTTP POST $path: получен статус ${response.statusCode}.');
     return _decodeResponse(response);
   }
 
@@ -722,7 +724,7 @@ class DreameService {
     };
   }
 
-  Map<String, dynamic> _decodeResponse(http.Response response) {
+  Future<Map<String, dynamic>> _decodeResponse(http.Response response) async {
     dynamic decoded;
     try {
       decoded = jsonDecode(utf8.decode(response.bodyBytes));
@@ -743,7 +745,7 @@ class DreameService {
       );
     }
     final code = int.tryParse(data['code']?.toString() ?? '0') ?? 0;
-    DreameDiagnostics.record('HTTP ${response.statusCode}: code=$code, поля ответа=${data.keys.toList()}.');
+    await DreameDiagnostics.record('HTTP ${response.statusCode}: code=$code, поля ответа=${data.keys.toList()}.');
     if (code == 80001) {
       throw const DreameCommandUnconfirmedException(
         'Облачный запрос завершился тайм-аутом (80001). Если это была команда управления, она могла быть принята роботом.',
