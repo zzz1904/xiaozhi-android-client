@@ -615,9 +615,43 @@ class DreameService {
 
   Future<void> startShortcut(String deviceId, int shortcutId) async {
     if (shortcutId < 25 || shortcutId > 128) {
-      throw DreameException('Недопустимый идентификатор сценария.');
+      throw DreameException('Недопустимый идентификатор быстрой команды.');
     }
-    await _startCustom(deviceId, 25, shortcutId.toString());
+
+    final beforeRaw = int.tryParse(
+      (await _readPropertyValue(deviceId, siid: 4, piid: 23))?.toString() ?? '',
+    );
+    final beforeMode =
+        beforeRaw == null ? null : _decodeCleaningMode(beforeRaw);
+    await DreameDiagnostics.record(
+      'Быстрая команда: запуск сохранённой команды id=$shortcutId; '
+      'action=4/1; piid1=25; piid10="$shortcutId"; '
+      'режим до запуска: 4/23 raw=$beforeRaw, semantic=$beforeMode.',
+    );
+
+    final response = await _startCustom(deviceId, 25, shortcutId.toString());
+    final data = response['data'];
+    final result = data is Map ? data['result'] : null;
+    final resultSummary = result is Map
+        ? 'map(keys=${result.keys.toList()})'
+        : result is List
+            ? 'list(length=${result.length})'
+            : result.runtimeType.toString();
+    await DreameDiagnostics.record(
+      'Быстрая команда: ответ Dreamehome на запуск id=$shortcutId: $resultSummary.',
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 1200));
+    final afterRaw = int.tryParse(
+      (await _readPropertyValue(deviceId, siid: 4, piid: 23))?.toString() ?? '',
+    );
+    final afterMode =
+        afterRaw == null ? null : _decodeCleaningMode(afterRaw);
+    await DreameDiagnostics.record(
+      'Быстрая команда: режим после запуска id=$shortcutId: '
+      '4/23 raw=$afterRaw, semantic=$afterMode; '
+      'до запуска raw=$beforeRaw, semantic=$beforeMode.',
+    );
   }
 
   /// Starts cleaning one or more room segments by their map segment IDs.
@@ -827,8 +861,12 @@ class DreameService {
     );
   }
 
-  Future<void> _startCustom(String deviceId, int mode, String payload) async {
-    await _sendCommand(
+  Future<Map<String, dynamic>> _startCustom(
+    String deviceId,
+    int mode,
+    String payload,
+  ) async {
+    return _sendCommand(
       deviceId,
       method: 'action',
       params: {
