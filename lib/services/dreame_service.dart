@@ -674,15 +674,60 @@ class DreameService {
     if (mode < 0 || mode > 3) {
       throw DreameException('Недопустимый режим уборки.');
     }
+    // Write the plain cleaning-mode enum. Property 4/23 is a packed
+    // capability bitfield; writing it directly can silently break cleaning.
+    // The canonical writable setting is MIoT 2/6.
     await _sendCommand(
       deviceId,
       method: 'set_properties',
       params: [
-        // L20 Ultra cleaning mode is MIoT service 4 / property 23:
-        // 0 = vacuum, 1 = mop, 2 = vacuum + mop, 3 = vacuum then mop.
-        {'did': deviceId, 'siid': 4, 'piid': 23, 'value': mode},
+        {'did': deviceId, 'siid': 2, 'piid': 6, 'value': mode},
       ],
     );
+    await DreameDiagnostics.record(
+      'Режим уборки: команда записи 2/6=$mode принята облаком; проверяю значение на устройстве.',
+    );
+
+    // Do not launch room cleaning unless the requested mode is actually
+    // visible on the device. This prevents silently falling back to the
+    // last mode selected in Dreamehome.
+    await Future<void>.delayed(const Duration(milliseconds: 600));
+    final verification = await _sendCommand(
+      deviceId,
+      method: 'get_properties',
+      params: [
+        {'did': deviceId, 'siid': 2, 'piid': 6},
+        {'did': deviceId, 'siid': 4, 'piid': 23},
+      ],
+    );
+    final data = verification['data'];
+    final results = data is Map ? data['result'] : null;
+    int? settingValue;
+    int? packedModeValue;
+    if (results is List) {
+      for (final item in results.whereType<Map>()) {
+        final siid = int.tryParse(item['siid']?.toString() ?? '');
+        final piid = int.tryParse(item['piid']?.toString() ?? '');
+        final value = int.tryParse(item['value']?.toString() ?? '');
+        if (value == null) continue;
+        if (siid == 2 && piid == 6) settingValue = value;
+        if (siid == 4 && piid == 23) packedModeValue = value;
+      }
+    }
+    await DreameDiagnostics.record(
+      'Проверка режима: 2/6=$settingValue; 4/23=$packedModeValue; ожидалось=$mode.',
+    );
+    if (settingValue != mode) {
+      throw DreameException(
+        'Робот не подтвердил переключение режима уборки. Запуск отменён, чтобы не начать уборку в старом режиме.',
+      );
+    }
+    if (packedModeValue != null && (packedModeValue & 0x3) != mode) {
+      throw DreameException(
+        'Робот подтвердил команду, но фактический режим не совпал. Запуск отменён.',
+      );
+    }
+    await DreameDiagnostics.record('Режим уборки подтверждён устройством: $mode.');
   }
 
   Future<void> _startCustom(String deviceId, int mode, String payload) async {
