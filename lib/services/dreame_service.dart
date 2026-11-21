@@ -670,64 +670,161 @@ class DreameService {
     );
   }
 
+  Future<dynamic> _readPropertyValue(
+    String deviceId, {
+    required int siid,
+    required int piid,
+  }) async {
+    final response = await _sendCommand(
+      deviceId,
+      method: 'get_properties',
+      params: [
+        {'did': deviceId, 'siid': siid, 'piid': piid},
+      ],
+    );
+    final data = response['data'];
+    final results = data is Map ? data['result'] : null;
+    if (results is! List || results.isEmpty) return null;
+    for (final item in results.whereType<Map>()) {
+      final resultSiid = int.tryParse(item['siid']?.toString() ?? '');
+      final resultPiid = int.tryParse(item['piid']?.toString() ?? '');
+      if ((resultSiid == null || resultSiid == siid) &&
+          (resultPiid == null || resultPiid == piid)) {
+        return item['value'];
+      }
+    }
+    return results.first is Map ? results.first['value'] : null;
+  }
+
+  int _decodeCleaningMode(int raw) {
+    // Dreame 4/23 stores the semantic mode in its two least-significant bits:
+    // 0 = vacuum + mop, 1 = mop, 2 = vacuum, 3 = vacuum then mop.
+    switch (raw & 0x3) {
+      case 0:
+        return 2;
+      case 1:
+        return 1;
+      case 2:
+        return 0;
+      default:
+        return 3;
+    }
+  }
+
   Future<void> setCleaningMode(String deviceId, int mode) async {
     if (mode < 0 || mode > 3) {
       throw DreameException('Недопустимый режим уборки.');
     }
-    // Write the plain cleaning-mode enum. Property 4/23 is a packed
-    // capability bitfield; writing it directly can silently break cleaning.
-    // The canonical writable setting is MIoT 2/6.
+
+    // MIoT 4/23 is the actual L20 cleaning-mode field. Its low bits are not
+    // the app's semantic enum: vacuum+mop=0, mop=1, vacuum=2, vac-then-mop=3.
+    // Preserve all upper capability bits reported by the robot.
+    final currentRaw = int.tryParse(
+      (await _readPropertyValue(deviceId, siid: 4, piid: 23))?.toString() ?? '',
+    );
+    if (currentRaw == null) {
+      throw DreameException(
+        'Не удалось прочитать режим уборки Dreame (4/23). Запуск отменён.',
+      );
+    }
+    final protocolMode = switch (mode) {
+      2 => 0,
+      1 => 1,
+      0 => 2,
+      _ => 3,
+    };
+    final encodedMode = (currentRaw & ~0x3) | protocolMode;
+
     await _sendCommand(
       deviceId,
       method: 'set_properties',
       params: [
-        {'did': deviceId, 'siid': 2, 'piid': 6, 'value': mode},
+        {'did': deviceId, 'siid': 4, 'piid': 23, 'value': encodedMode},
       ],
     );
     await DreameDiagnostics.record(
-      'Режим уборки: команда записи 2/6=$mode принята облаком; проверяю значение на устройстве.',
+      'Режим уборки: записываю 4/23=$encodedMode (режим приложения=$mode, младшие биты=$protocolMode, верхние биты сохранены).',
     );
 
-    // Do not launch room cleaning unless the requested mode is actually
-    // visible on the device. This prevents silently falling back to the
-    // last mode selected in Dreamehome.
     await Future<void>.delayed(const Duration(milliseconds: 600));
-    final verification = await _sendCommand(
-      deviceId,
-      method: 'get_properties',
-      params: [
-        {'did': deviceId, 'siid': 2, 'piid': 6},
-        {'did': deviceId, 'siid': 4, 'piid': 23},
-      ],
+    final verifiedRaw = int.tryParse(
+      (await _readPropertyValue(deviceId, siid: 4, piid: 23))?.toString() ?? '',
     );
-    final data = verification['data'];
-    final results = data is Map ? data['result'] : null;
-    int? settingValue;
-    int? packedModeValue;
-    if (results is List) {
-      for (final item in results.whereType<Map>()) {
-        final siid = int.tryParse(item['siid']?.toString() ?? '');
-        final piid = int.tryParse(item['piid']?.toString() ?? '');
-        final value = int.tryParse(item['value']?.toString() ?? '');
-        if (value == null) continue;
-        if (siid == 2 && piid == 6) settingValue = value;
-        if (siid == 4 && piid == 23) packedModeValue = value;
-      }
+    final verifiedMode =
+        verifiedRaw == null ? null : _decodeCleaningMode(verifiedRaw);
+    await DreameDiagnostics.record(
+      'Проверка режима уборки: 4/23 raw=$verifiedRaw; режим робота=$verifiedMode; ожидалось=$mode.',
+    );
+    if (verifiedRaw == null || verifiedMode != mode) {
+      throw DreameException(
+        'Робот не подтвердил нужный режим уборки. Запуск отменён, чтобы не начать уборку с неправильными настройками.',
+      );
     }
     await DreameDiagnostics.record(
-      'Проверка режима: 2/6=$settingValue; 4/23=$packedModeValue; ожидалось=$mode.',
+      'Режим уборки подтверждён: $mode (4/23=$verifiedRaw).',
     );
-    if (settingValue != mode) {
+  }
+
+  int? _cleanRouteFromValue(dynamic value) {
+    dynamic decoded = value;
+    if (decoded is String) {
+      try {
+        decoded = jsonDecode(decoded);
+      } catch (_) {
+        return null;
+      }
+    }
+    if (decoded is Map) {
+      if (decoded['k'] == 'CleanRoute') {
+        return int.tryParse(decoded['v']?.toString() ?? '');
+      }
+      return int.tryParse(decoded['CleanRoute']?.toString() ?? '');
+    }
+    if (decoded is List) {
+      for (final item in decoded.whereType<Map>()) {
+        if (item['k'] == 'CleanRoute') {
+          return int.tryParse(item['v']?.toString() ?? '');
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<void> setCleaningRoute(String deviceId, int route) async {
+    if (route < 1 || route > 4) {
+      throw DreameException('Недопустимый вариант маршрута уборки.');
+    }
+    // Dreame stores the route in the Auto Switch Settings JSON property.
+    // CleanRoute=4 is the documented QUICK/FAST route.
+    await _sendCommand(
+      deviceId,
+      method: 'set_properties',
+      params: [
+        {
+          'did': deviceId,
+          'siid': 4,
+          'piid': 50,
+          'value': jsonEncode({'k': 'CleanRoute', 'v': route}),
+        },
+      ],
+    );
+    await DreameDiagnostics.record(
+      'Маршрут уборки: отправлена запись 4/50 CleanRoute=$route.',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    final raw = await _readPropertyValue(deviceId, siid: 4, piid: 50);
+    final actual = _cleanRouteFromValue(raw);
+    await DreameDiagnostics.record(
+      'Проверка маршрута уборки: CleanRoute=$actual; ожидалось=$route.',
+    );
+    if (actual != route) {
       throw DreameException(
-        'Робот не подтвердил переключение режима уборки. Запуск отменён, чтобы не начать уборку в старом режиме.',
+        'Робот не подтвердил быстрый маршрут уборки. Запуск отменён.',
       );
     }
-    if (packedModeValue != null && (packedModeValue & 0x3) != mode) {
-      throw DreameException(
-        'Робот подтвердил команду, но фактический режим не совпал. Запуск отменён.',
-      );
-    }
-    await DreameDiagnostics.record('Режим уборки подтверждён устройством: $mode.');
+    await DreameDiagnostics.record(
+      'Быстрый маршрут уборки подтверждён роботом.',
+    );
   }
 
   Future<void> _startCustom(String deviceId, int mode, String payload) async {
