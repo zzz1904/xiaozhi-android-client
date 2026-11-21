@@ -65,15 +65,15 @@ class DreameVoiceCommandHandler {
 
   bool _looksLikeVacuumCommand(String text) {
     return text.contains('убери') ||
-        text.contains('уборку') ||
         text.contains('пропылесось') ||
-        text.contains('пылесос') ||
         text.contains('помой') ||
         text.contains('помыть') ||
         text.contains('влажная уборка') ||
         text.contains('сухая уборка') ||
         text.contains('запусти сценарий') ||
-        text.contains('запусти команду');
+        text.contains('запусти команду') ||
+        text.contains('запусти уборку') ||
+        text.contains('начни уборку');
   }
 
   bool _isShortcutRequest(String text) {
