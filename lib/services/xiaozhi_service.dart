@@ -80,7 +80,7 @@ class XiaozhiService {
     print('$TAG: $line');
   }
 
-  String buildDiagnostics([Object? error], {StackTrace? stackTrace}) {
+  String buildDiagnostics({Object? error, StackTrace? stackTrace}) {
     final uri = Uri.tryParse(websocketUrl);
     final lines = <String>[
       'Диагностика XiaoZhi',
