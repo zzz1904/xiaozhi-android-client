@@ -118,9 +118,49 @@ class DreameVoiceCommandHandler {
       'кабинет': ['office', 'study'],
     };
     for (final entry in aliases.entries) {
-      if (name == entry.key || stem == entry.key.replaceFirst(RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)$'), '')) {
-        if (entry.value.any(text.contains)) return true;
-      }
+      final russianStem = entry.key.replaceFirst(
+        RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)
+    return false;
+  }
+
+  int? _requestedCleaningMode(String text) {
+    if (text.contains('и помой') || text.contains('пылесос и влажная')) {
+      return 2; // vacuum and mop
+    }
+    if (text.contains('пропылесось') ||
+        text.contains('пылесось') ||
+        text.contains('только пылесос') ||
+        text.contains('сухая уборка')) {
+      return 0; // sweeping / vacuuming
+    }
+    if (text.contains('помой') ||
+        text.contains('помыть') ||
+        text.contains('влажная уборка')) {
+      return 1; // mopping
+    }
+    return null; // "убери" keeps the robot's current cleaning mode.
+  }
+
+  String _normalize(String value) {
+    return value
+        .toLowerCase()
+        .replaceAll('ё', 'е')
+        .replaceAll(RegExp(r'[^a-zа-я0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  void dispose() => _service.dispose();
+}
+),
+        '',
+      );
+      final mapNameMatches = name == entry.key ||
+          stem == russianStem ||
+          entry.value.any((alias) => name.contains(alias));
+      final spokenNameMatches = text.contains(russianStem) ||
+          entry.value.any((alias) => text.contains(alias));
+      if (mapNameMatches && spokenNameMatches) return true;
     }
     return false;
   }
