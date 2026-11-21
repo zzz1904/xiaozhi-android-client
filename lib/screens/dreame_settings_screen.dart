@@ -102,7 +102,7 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
     final dreameReport = await DreameDiagnostics.buildReport(error: _error);
     final xiaozhiReport = XiaozhiService.instance?.buildDiagnostics() ??
         'Диагностика XiaoZhi: экземпляр сервиса сейчас недоступен.';
-    final report = '$dreameReport\\n\\n$xiaozhiReport';
+    final report = '$dreameReport\n\n$xiaozhiReport';
     await Clipboard.setData(ClipboardData(text: report));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
