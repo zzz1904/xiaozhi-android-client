@@ -323,7 +323,8 @@ class DreameService {
       if (id == null) continue;
       var name = item['name']?.toString() ?? 'Сценарий $id';
       try {
-        name = utf8.decode(base64.decode(base64.normalize(name)));
+        final encodedName = name.replaceAll('+', '-').replaceAll('/', '_');
+            name = utf8.decode(base64Url.decode(base64Url.normalize(encodedName)));
       } catch (_) {
         // Keep a readable plain-text name if the cloud already decoded it.
       }
@@ -480,7 +481,8 @@ class DreameService {
         var name = info is Map ? info['name']?.toString() ?? '' : '';
         if (name.isNotEmpty) {
           try {
-            name = utf8.decode(base64.decode(base64.normalize(name)));
+            final encodedName = name.replaceAll('+', '-').replaceAll('/', '_');
+            name = utf8.decode(base64Url.decode(base64Url.normalize(encodedName)));
           } catch (_) {
             // Keep the raw map name if it isn't base64 encoded.
           }
