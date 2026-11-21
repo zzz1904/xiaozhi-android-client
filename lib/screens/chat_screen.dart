@@ -10,6 +10,8 @@ import 'package:ai_assistant/models/xiaozhi_config.dart';
 import 'package:ai_assistant/providers/conversation_provider.dart';
 import 'package:ai_assistant/providers/config_provider.dart';
 import 'package:ai_assistant/services/xiaozhi_service.dart';
+import 'package:ai_assistant/services/dreame_voice_command_handler.dart';
+import 'package:ai_assistant/services/dreame_diagnostics.dart';
 import 'package:ai_assistant/widgets/message_bubble.dart';
 import 'package:ai_assistant/screens/voice_call_screen.dart';
 import 'dart:async';
@@ -34,6 +36,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   bool _isLoading = false;
   bool _handsFreeReady = false;
   XiaozhiService? _xiaozhiService; // 保持XiaozhiService实例
+  DreameVoiceCommandHandler? _dreameCommandHandler;
+  bool _dreameCommandRunning = false;
   Timer? _connectionCheckTimer; // 添加定时器检查连接状态
   Timer? _autoReconnectTimer; // 自动重连定时器
   bool _backgroundCloseStarted = false;
@@ -204,6 +208,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     // Гарантированно останавливаем микрофон, звук и соединение.
     _shutdownXiaozhiService();
+    _xiaozhiService?.setLocalCommandMatcher(null);
+    _dreameCommandHandler?.dispose();
 
     super.dispose();
   }
@@ -222,6 +228,13 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       clientId: xiaozhiConfig.clientId,
       sessionId: widget.conversation.id,
     );
+
+    // Register on the XiaoZhi instance used by the assistant hotkey chat.
+    if (widget.assistantMode) {
+      _dreameCommandHandler = DreameVoiceCommandHandler();
+      _xiaozhiService!.setLocalCommandMatcher(_dreameCommandHandler!.isCommand);
+      await DreameDiagnostics.record('Горячий помощник: перехватчик Dreame зарегистрирован в ChatScreen.');
+    }
 
     // 添加消息监听器
     _xiaozhiService!.addListener(_handleXiaozhiMessage);
@@ -293,6 +306,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
       // 只有在语音输入模式下才添加用户消息
       if (content.isNotEmpty && _isVoiceInputMode) {
+        if (widget.assistantMode && _dreameCommandHandler?.isCommand(content) == true) {
+          unawaited(_runDreameAssistantCommand(content));
+        }
         // 语音消息可能有延迟，使用Future.microtask确保UI已更新
         Future.microtask(() {
           conversationProvider.addMessage(
@@ -309,6 +325,43 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         event.type == XiaozhiServiceEventType.disconnected) {
       // 当连接状态发生变化时，更新UI
       setState(() {});
+    }
+  }
+
+  Future<void> _runDreameAssistantCommand(String recognizedText) async {
+    final handler = _dreameCommandHandler;
+    if (handler == null || _dreameCommandRunning || !handler.isCommand(recognizedText)) return;
+    _dreameCommandRunning = true;
+    await DreameDiagnostics.record('Горячий помощник: получена локальная команда Dreame="$recognizedText".');
+    try {
+      final provider = Provider.of<ConversationProvider>(context, listen: false);
+      await provider.addMessage(
+        conversationId: widget.conversation.id,
+        role: MessageRole.assistant,
+        content: 'Понял. Выполняю команду Dreamehome…',
+      );
+      final result = await handler.handle(recognizedText) ??
+          'Не удалось определить комнату или быструю команду Dreame.';
+      await DreameDiagnostics.record('Горячий помощник: результат Dreame="$result".');
+      if (mounted) {
+        await provider.addMessage(
+          conversationId: widget.conversation.id,
+          role: MessageRole.assistant,
+          content: result,
+        );
+      }
+    } catch (error, stackTrace) {
+      await DreameDiagnostics.record('Горячий помощник: ошибка команды Dreame: $error\n$stackTrace');
+      if (mounted) {
+        final provider = Provider.of<ConversationProvider>(context, listen: false);
+        await provider.addMessage(
+          conversationId: widget.conversation.id,
+          role: MessageRole.assistant,
+          content: 'Ошибка выполнения команды Dreame: $error',
+        );
+      }
+    } finally {
+      _dreameCommandRunning = false;
     }
   }
 
