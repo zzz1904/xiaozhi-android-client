@@ -154,6 +154,14 @@ class DreameService {
     _expiresAt = expiry == null ? null : DateTime.tryParse(expiry);
   }
 
+  Future<void> saveSelectedDeviceId(String deviceId) async {
+    await _storage.write(key: 'dreame.deviceId', value: deviceId);
+  }
+
+  Future<String?> loadSelectedDeviceId() {
+    return _storage.read(key: 'dreame.deviceId');
+  }
+
   Future<void> disconnect() async {
     _accessToken = null;
     _refreshToken = null;
@@ -169,6 +177,7 @@ class DreameService {
       'dreame.refreshToken',
       'dreame.uid',
       'dreame.expiresAt',
+      'dreame.deviceId',
     ]) {
       await _storage.delete(key: key);
     }
@@ -451,6 +460,9 @@ class DreameService {
     final tailOffset = 27 + width * height;
     final tailText = utf8.decode(inflated.sublist(tailOffset), allowMalformed: true);
     final tail = jsonDecode(tailText);
+    if (tail is Map && tail['fsm'] is num && tail['fsm'] != 1) {
+      throw const DreameException('Формат карты робота пока не поддерживается.');
+    }
     final segmentInfo = tail is Map ? tail['seg_inf'] : null;
     final rooms = roomIds.toList()..sort();
     return _DecodedDreameMap(
@@ -495,13 +507,54 @@ class DreameService {
     if (segmentIds.isEmpty) {
       throw DreameException('Не выбраны комнаты для уборки.');
     }
+    var fan = suctionLevel ?? 1;
+    var water = waterVolume ?? 2;
+    if (suctionLevel == null || waterVolume == null) {
+      try {
+        final current = await _sendCommand(
+          deviceId,
+          method: 'get_properties',
+          params: [
+            {'did': deviceId, 'siid': 4, 'piid': 4},
+            {'did': deviceId, 'siid': 4, 'piid': 5},
+          ],
+        );
+        final currentData = current['data'];
+        final values = currentData is Map<String, dynamic> ? currentData['result'] : null;
+        if (values is List) {
+          for (final item in values.whereType<Map>()) {
+            final siid = int.tryParse(item['siid']?.toString() ?? '');
+            final piid = int.tryParse(item['piid']?.toString() ?? '');
+            final value = int.tryParse(item['value']?.toString() ?? '');
+            if (value == null) continue;
+            if (siid == 4 && piid == 4 && suctionLevel == null) fan = value;
+            if (siid == 4 && piid == 5 && waterVolume == null) water = value;
+          }
+        }
+      } catch (_) {
+        // Use safe defaults when a device does not answer the optional read.
+      }
+    }
     final selects = segmentIds
-        .map((id) => [id, max(1, repeats), suctionLevel ?? 1, waterVolume ?? 2, 1])
+        .map((id) => [id, max(1, repeats), fan, water, 1])
         .toList();
     await _startCustom(
       deviceId,
       18,
       jsonEncode({'selects': selects}),
+    );
+  }
+
+  Future<void> setCleaningMode(String deviceId, int mode) async {
+    if (mode < 0 || mode > 3) {
+      throw DreameException('Недопустимый режим уборки.');
+    }
+    await _sendCommand(
+      deviceId,
+      method: 'set_properties',
+      params: [
+        {'did': deviceId, 'siid': 2, 'piid': 6, 'value': mode},
+      ],
     );
   }
 
