@@ -694,10 +694,12 @@ class DreameService {
       'command_id': body['id'],
       'device_id_suffix': (body['did']?.toString().length ?? 0) > 4 ? body['did'].toString().substring(body['did'].toString().length - 4) : body['did'],
     });
+    var responseReceived = false;
     try {
       final response = await _client
           .post(uri, headers: headers, body: requestBody)
           .timeout(const Duration(seconds: 30));
+      responseReceived = true;
       watch.stop();
       dynamic decoded;
       try { decoded = jsonDecode(utf8.decode(response.bodyBytes)); } catch (_) {}
@@ -725,7 +727,8 @@ class DreameService {
     } catch (e) {
       watch.stop();
       _recordDiagnostic({
-        'event': 'http_transport_error',
+        'event': 'http_request_error',
+        'phase': responseReceived ? 'response_decode' : 'transport',
         'method': 'POST',
         'path': uri.path,
         'elapsed_ms': watch.elapsedMilliseconds,
