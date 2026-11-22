@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'dart:io';
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart' as crypto;
@@ -88,6 +89,64 @@ class DreameService {
 
   final FlutterSecureStorage _storage;
   final http.Client _client;
+  final List<Map<String, dynamic>> _diagnosticEvents = [];
+
+  List<Map<String, dynamic>> get diagnosticEvents =>
+      List<Map<String, dynamic>>.unmodifiable(_diagnosticEvents);
+
+  String get diagnosticReport => const JsonEncoder.withIndent('  ').convert({
+        'generated_at_utc': DateTime.now().toUtc().toIso8601String(),
+        'app': 'XiaoZhi Dreame diagnostics',
+        'platform': Platform.operatingSystem,
+        'platform_version': Platform.operatingSystemVersion,
+        'region': _region,
+        'country': _country,
+        'language': _language,
+        'host': _host,
+        'access_token_present': _accessToken?.isNotEmpty == true,
+        'refresh_token_present': _refreshToken?.isNotEmpty == true,
+        'token_seconds_remaining': _expiresAt?.difference(DateTime.now()).inSeconds,
+        'events': _diagnosticEvents,
+      });
+
+  void _recordDiagnostic(Map<String, dynamic> event) {
+    _diagnosticEvents.add({
+      'at_utc': DateTime.now().toUtc().toIso8601String(),
+      ...event,
+    });
+    if (_diagnosticEvents.length > 150) _diagnosticEvents.removeAt(0);
+  }
+
+  void clearDiagnostics() => _diagnosticEvents.clear();
+
+  /// Runs only read-only cloud operations; it never starts or changes cleaning.
+  Future<void> runDiagnostics(String deviceId) async {
+    clearDiagnostics();
+    _recordDiagnostic({'event': 'diagnostic_start', 'device_id_suffix': deviceId.length > 4 ? deviceId.substring(deviceId.length - 4) : deviceId});
+    try {
+      final addresses = await InternetAddress.lookup(_host).timeout(const Duration(seconds: 10));
+      _recordDiagnostic({
+        'event': 'dns_lookup',
+        'host': _host,
+        'elapsed_ms': null,
+        'addresses': addresses.map((a) => a.address).toList(),
+      });
+    } catch (e) {
+      _recordDiagnostic({'event': 'dns_lookup_error', 'error': e.toString()});
+    }
+    for (final property in const [[4, 48], [6, 8]]) {
+      final watch = Stopwatch()..start();
+      try {
+        await _sendCommand(deviceId, method: 'get_properties', params: [
+          {'did': deviceId, 'siid': property[0], 'piid': property[1]},
+        ]);
+        _recordDiagnostic({'event': 'probe_result', 'siid': property[0], 'piid': property[1], 'result': 'success', 'elapsed_ms': watch.elapsedMilliseconds});
+      } catch (e) {
+        _recordDiagnostic({'event': 'probe_result', 'siid': property[0], 'piid': property[1], 'result': 'error', 'elapsed_ms': watch.elapsedMilliseconds, 'error': e.toString()});
+      }
+    }
+    _recordDiagnostic({'event': 'diagnostic_end'});
+  }
 
   String _region = 'eu';
   String _country = 'TR';
@@ -609,17 +668,72 @@ class DreameService {
     Map<String, dynamic> body,
   ) async {
     await _ensureSession();
-    final response = await _client
-        .post(
-          Uri.parse('$_baseUrl$path'),
-          headers: _headers(
-            contentType: 'application/json',
-            accessToken: _accessToken,
-          ),
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 30));
-    return _decodeResponse(response);
+    final uri = Uri.parse('$_baseUrl$path');
+    final requestBody = jsonEncode(body);
+    final headers = _headers(
+      contentType: 'application/json',
+      accessToken: _accessToken,
+    );
+    final watch = Stopwatch()..start();
+    _recordDiagnostic({
+      'event': 'http_request',
+      'method': 'POST',
+      'host': uri.host,
+      'port': uri.port,
+      'path': uri.path,
+      'content_type': headers['content-type'],
+      'user_agent': headers['user-agent'],
+      'dreame_meta': headers['dreame-meta'],
+      'tenant_id': headers['tenant-id'],
+      'dreame_rlc': headers['dreame-rlc'],
+      'authorization_present': headers['authorization']?.isNotEmpty == true,
+      'bearer_token_present': headers['dreame-auth']?.startsWith('bearer ') == true,
+      'request_body_bytes': utf8.encode(requestBody).length,
+      'request_body_sha256': crypto.sha256.convert(utf8.encode(requestBody)).toString(),
+      'command_method': body['data'] is Map ? (body['data'] as Map)['method'] : null,
+      'command_id': body['id'],
+      'device_id_suffix': (body['did']?.toString().length ?? 0) > 4 ? body['did'].toString().substring(body['did'].toString().length - 4) : body['did'],
+    });
+    try {
+      final response = await _client
+          .post(uri, headers: headers, body: requestBody)
+          .timeout(const Duration(seconds: 30));
+      watch.stop();
+      dynamic decoded;
+      try { decoded = jsonDecode(utf8.decode(response.bodyBytes)); } catch (_) {}
+      final responseMap = decoded is Map ? decoded : const <String, dynamic>{};
+      final setCookie = response.headers.keys.where((k) => k.toLowerCase() == 'set-cookie').toList();
+      _recordDiagnostic({
+        'event': 'http_response',
+        'method': 'POST',
+        'path': uri.path,
+        'elapsed_ms': watch.elapsedMilliseconds,
+        'http_status': response.statusCode,
+        'response_bytes': response.bodyBytes.length,
+        'response_content_type': response.headers['content-type'],
+        'response_server': response.headers['server'],
+        'response_date': response.headers['date'],
+        'response_connection': response.headers['connection'],
+        'response_via': response.headers['via'],
+        'set_cookie_header_present': setCookie.isNotEmpty,
+        'response_code': responseMap['code'],
+        'response_success': responseMap['success'],
+        'response_message': responseMap['msg']?.toString(),
+        'response_data_type': responseMap['data']?.runtimeType.toString(),
+      });
+      return _decodeResponse(response);
+    } catch (e) {
+      watch.stop();
+      _recordDiagnostic({
+        'event': 'http_transport_error',
+        'method': 'POST',
+        'path': uri.path,
+        'elapsed_ms': watch.elapsedMilliseconds,
+        'error_type': e.runtimeType.toString(),
+        'error': e.toString(),
+      });
+      rethrow;
+    }
   }
 
   Map<String, String> _headers({
