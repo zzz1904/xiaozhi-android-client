@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/dreame_service.dart';
 
@@ -25,6 +26,7 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
   bool _loading = false;
   bool _obscurePassword = true;
   bool _connected = false;
+  bool _diagnosticsRunning = false;
   String? _error;
 
   static const _regions = <String, String>{
@@ -135,6 +137,34 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _runNetworkDiagnostics() async {
+    final deviceId = _selectedDeviceId;
+    if (deviceId == null) return;
+    setState(() {
+      _diagnosticsRunning = true;
+      _error = null;
+    });
+    try {
+      await _service.runDiagnostics(deviceId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Диагностика завершена. Можно скопировать отчёт.')),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _error = 'Ошибка диагностики: $e');
+    } finally {
+      if (mounted) setState(() => _diagnosticsRunning = false);
+    }
+  }
+
+  Future<void> _copyNetworkDiagnostics() async {
+    await Clipboard.setData(ClipboardData(text: _service.diagnosticReport));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Отчёт скопирован. Вставьте его сюда в чат.')),
+    );
   }
 
   Future<void> _cleanSelectedRooms() async {
@@ -395,6 +425,72 @@ class _DreameSettingsScreenState extends State<DreameSettingsScreen> {
                       const SizedBox(height: 8),
                       Text(
                         selectedDevice.model,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.monitor_heart_outlined),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Сетевая диагностика Dreame',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Проверит DNS и выполнит два безопасных запроса чтения '
+                      '(список сценариев и указатель карты). Уборка не запускается. '
+                      'В отчёте нет пароля и токенов.',
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _diagnosticsRunning || _loading
+                            ? null
+                            : _runNetworkDiagnostics,
+                        icon: _diagnosticsRunning
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.network_check),
+                        label: Text(_diagnosticsRunning
+                            ? 'Проверка…'
+                            : 'Запустить диагностику'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _service.diagnosticEvents.isEmpty
+                            ? null
+                            : _copyNetworkDiagnostics,
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Скопировать отчёт'),
+                      ),
+                    ),
+                    if (_service.diagnosticEvents.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Событий записано: ${_service.diagnosticEvents.length}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
