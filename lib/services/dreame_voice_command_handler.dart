@@ -102,11 +102,11 @@ class DreameVoiceCommandHandler {
     if (name.isEmpty) return false;
     if (text.contains(name)) return true;
 
-    // Russian room names are commonly spoken in the accusative case:
-    // "кухня" -> "кухню", "спальня" -> "спальню", "ванная" -> "ванную".
+    // Russian room names are commonly spoken in the accusative case.
     final stem = name.replaceFirst(RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)$'), '');
     if (stem.length >= 3 && text.contains(stem)) return true;
 
+    // Dreame maps can return English room labels while speech is Russian.
     const aliases = <String, List<String>>{
       'кухня': ['kitchen'],
       'коридор': ['hall', 'hallway', 'corridor'],
@@ -119,40 +119,7 @@ class DreameVoiceCommandHandler {
     };
     for (final entry in aliases.entries) {
       final russianStem = entry.key.replaceFirst(
-        RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)
-    return false;
-  }
-
-  int? _requestedCleaningMode(String text) {
-    if (text.contains('и помой') || text.contains('пылесос и влажная')) {
-      return 2; // vacuum and mop
-    }
-    if (text.contains('пропылесось') ||
-        text.contains('пылесось') ||
-        text.contains('только пылесос') ||
-        text.contains('сухая уборка')) {
-      return 0; // sweeping / vacuuming
-    }
-    if (text.contains('помой') ||
-        text.contains('помыть') ||
-        text.contains('влажная уборка')) {
-      return 1; // mopping
-    }
-    return null; // "убери" keeps the robot's current cleaning mode.
-  }
-
-  String _normalize(String value) {
-    return value
-        .toLowerCase()
-        .replaceAll('ё', 'е')
-        .replaceAll(RegExp(r'[^a-zа-я0-9\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-  }
-
-  void dispose() => _service.dispose();
-}
-),
+        RegExp(r'(ая|яя|ия|а|я|ы|и|ь|й)$'),
         '',
       );
       final mapNameMatches = name == entry.key ||
