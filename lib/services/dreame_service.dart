@@ -124,11 +124,14 @@ class DreameService {
     clearDiagnostics();
     _recordDiagnostic({'event': 'diagnostic_start', 'device_id_suffix': deviceId.length > 4 ? deviceId.substring(deviceId.length - 4) : deviceId});
     try {
-      final addresses = await InternetAddress.lookup(_host).timeout(const Duration(seconds: 10));
+      final dnsWatch = Stopwatch()..start();
+      final lookupHost = Uri.parse('https://$_host').host;
+      final addresses = await InternetAddress.lookup(lookupHost).timeout(const Duration(seconds: 10));
+      dnsWatch.stop();
       _recordDiagnostic({
         'event': 'dns_lookup',
-        'host': _host,
-        'elapsed_ms': null,
+        'host': lookupHost,
+        'elapsed_ms': dnsWatch.elapsedMilliseconds,
         'addresses': addresses.map((a) => a.address).toList(),
       });
     } catch (e) {
